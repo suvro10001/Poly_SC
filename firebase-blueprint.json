@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "parties": {
+      "title": "Parties Directory",
+      "description": "Store customer accounts and contact information"
+    },
+    "salespersons": {
+      "title": "Salespersons Directory",
+      "description": "Store marketing representatives and codes"
+    },
+    "stored_bills": {
+      "title": "Stored Bills",
+      "description": "Store sales invoices and bills"
+    },
+    "collections": {
+      "title": "Collections",
+      "description": "Store money receipt payment collections"
+    },
+    "stock_returns": {
+      "title": "Stock Returns",
+      "description": "Store return challans"
+    },
+    "expenses": {
+      "title": "Expenses",
+      "description": "Store center expenses"
+    },
+    "bank_deposits": {
+      "title": "Bank Deposits",
+      "description": "Store bank cash deposit vouchers"
+    },
+    "delivery_challans": {
+      "title": "Delivery Challans",
+      "description": "Store customer delivery challans, goods dispatched, unbilled item quantities, and conversion to bills"
+    },
+    "automated_backups": {
+      "title": "Automated Daily Backups",
+      "description": "Store daily automated full system snapshots with multi-cloud failover"
+    }
+  }
+}

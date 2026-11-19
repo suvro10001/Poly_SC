@@ -1,0 +1,6 @@
+{
+  "name": "Poly_SC_Inventory",
+  "description": "Poly Cables Ind. Ltd. Bill & Inventory System with Factory Requisitions, Slip Pad Printing, Bulk Price Update by Effective Date, Office Bill Conversion, Customer Directory, and Financial Reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
