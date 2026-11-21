@@ -46,6 +46,7 @@ import {
   getClientSyncId
 } from '../utils/deletedTracker';
 import { safeSetStorageItem, idbSaveFailoverData } from '../utils/indexedDbStorage';
+import { BankLogoBadge } from './BankAndAccountDirectory';
 
 interface TrashProps {
   items: Item[];
@@ -91,6 +92,7 @@ interface TrashedItemWrapper {
   trashedAt: string;
   title: string;
   subtitle?: string;
+  bankName?: string;
   amount?: number;
   badge?: string;
   raw: any;
@@ -400,7 +402,8 @@ export const Trash: React.FC<TrashProps> = ({
           category: 'collections',
           trashedAt: c.trashedAt || c.date || new Date().toISOString(),
           title: `MR #${c.mrNo || 'N/A'} — ${c.entityName || c.partyName || 'Customer'}`,
-          subtitle: `${c.date || ''} • Method: ${c.paymentType ? c.paymentType.toUpperCase() : (c.chequeNo ? 'CHEQUE' : 'CASH')} ${c.bankName ? `(${c.bankName})` : ''}`,
+          subtitle: `${c.date || ''} • Method: ${c.paymentType ? c.paymentType.toUpperCase() : (c.chequeNo ? 'CHEQUE' : 'CASH')}`,
+          bankName: c.bankName || '',
           amount: Number(c.amount || 0),
           badge: c.paymentType === 'cheque' || c.chequeNo ? 'Cheque' : 'Cash',
           raw: c
@@ -521,6 +524,7 @@ export const Trash: React.FC<TrashProps> = ({
       (item) =>
         item.title.toLowerCase().includes(q) ||
         (item.subtitle && item.subtitle.toLowerCase().includes(q)) ||
+        (item.bankName && item.bankName.toLowerCase().includes(q)) ||
         (item.badge && item.badge.toLowerCase().includes(q))
     );
   }, [currentCategoryItems, searchQuery]);
@@ -925,7 +929,10 @@ export const Trash: React.FC<TrashProps> = ({
                       {item.title}
                     </td>
                     <td className="p-3 text-slate-300 text-xs">
-                      {item.subtitle || '-'}
+                      <div className="inline-flex items-center gap-2">
+                        {item.subtitle || '-'}
+                        {item.bankName && <BankLogoBadge bankName={item.bankName} size="sm" />}
+                      </div>
                     </td>
                     <td className="p-3 text-center whitespace-nowrap">
                       {item.badge ? (

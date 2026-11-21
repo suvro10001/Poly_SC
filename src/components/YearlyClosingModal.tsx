@@ -14,6 +14,7 @@ import {
 } from '../types';
 import { formatDateDDMMYY, parseDateToISO, getTodayDDMMYY } from '../utils/dateUtils';
 import { DateInputWithPicker } from './DateInputWithPicker';
+import { BankLogoBadge } from './BankAndAccountDirectory';
 import * as XLSX from 'xlsx';
 import {
   Lock,
@@ -312,6 +313,7 @@ export const YearlyClosingModal: React.FC<YearlyClosingModalProps> = ({
       sales: number; // Net Sales amount
       collection: number; // Collection amount
       remark: string;
+      bankName?: string;
       coils: number;
       isSelected: boolean;
       runningBalance?: number;
@@ -363,6 +365,7 @@ export const YearlyClosingModal: React.FC<YearlyClosingModalProps> = ({
         sales: 0,
         collection: Number(c.amount || 0),
         remark: colRemark,
+        bankName: c.bankName || undefined,
         coils: 0,
         isSelected
       });
@@ -584,6 +587,7 @@ export const YearlyClosingModal: React.FC<YearlyClosingModalProps> = ({
       sales: number;
       collection: number;
       remark: string;
+      bankName?: string;
       coils: number;
       runningBalance?: number;
     }> = [];
@@ -629,6 +633,7 @@ export const YearlyClosingModal: React.FC<YearlyClosingModalProps> = ({
         sales: 0,
         collection: Number(c.amount || 0),
         remark: colRemark,
+        bankName: c.bankName || undefined,
         coils: 0
       });
     });
@@ -1247,6 +1252,11 @@ export const YearlyClosingModal: React.FC<YearlyClosingModalProps> = ({
                                   </span>
                                 ) : item.type === 'bill' ? (
                                   <span className="text-slate-600 text-[11px] font-medium">{item.remark || 'Net Bill'}</span>
+                                ) : item.bankName ? (
+                                  <div className="inline-flex items-center gap-1">
+                                    <BankLogoBadge bankName={item.bankName} size="sm" />
+                                    {item.remark.startsWith('MR:') && <span className="text-emerald-800 text-[11px]">{item.remark}</span>}
+                                  </div>
                                 ) : (
                                   <span className="text-emerald-800 text-[11px] font-medium">{item.remark || 'Cash Received'}</span>
                                 )}
@@ -2008,7 +2018,7 @@ export const YearlyClosingModal: React.FC<YearlyClosingModalProps> = ({
                                   {item.runningBalance !== undefined ? `৳${item.runningBalance.toLocaleString('en-IN')}` : '-'}
                                 </td>
                                 <td className="p-2 text-center text-slate-700 font-medium text-[11px]">
-                                  {item.discountPercent ? `${item.discountPercent}%` : item.remark}
+                                  {item.discountPercent ? `${item.discountPercent}%` : item.bankName ? <BankLogoBadge bankName={item.bankName} size="sm" /> : item.remark}
                                 </td>
                               </tr>
                             ))
@@ -2099,7 +2109,12 @@ export const YearlyClosingModal: React.FC<YearlyClosingModalProps> = ({
                           {(viewingClosingStatement.settlementCollectionAmount || viewingClosingStatement.settlementCollection?.amount || 0) > 0 && (
                             <tr className="border-b border-slate-200/60 text-emerald-800 font-bold">
                               <td className="py-1 text-left">
-                                Settled Amount ({viewingClosingStatement.settlementCollection?.mrNo || 'MR-CLOSE'}{viewingClosingStatement.settlementCollection?.bankName ? ` - ${viewingClosingStatement.settlementCollection.bankName}` : ''}):
+                                <div className="inline-flex items-center gap-1">
+                                  Settled Amount ({viewingClosingStatement.settlementCollection?.mrNo || 'MR-CLOSE'})
+                                  {viewingClosingStatement.settlementCollection?.bankName && (
+                                    <BankLogoBadge bankName={viewingClosingStatement.settlementCollection.bankName} size="sm" />
+                                  )}
+                                </div>
                               </td>
                               <td className="py-1 text-right font-mono font-bold whitespace-nowrap">
                                 - ৳{(viewingClosingStatement.settlementCollectionAmount || viewingClosingStatement.settlementCollection?.amount || 0).toLocaleString('en-IN')}
@@ -2496,7 +2511,7 @@ export const YearlyClosingModal: React.FC<YearlyClosingModalProps> = ({
                           {item.runningBalance !== undefined ? `৳${item.runningBalance.toLocaleString('en-IN')}` : '-'}
                         </td>
                         <td className="p-2 text-center font-bold text-[11px]">
-                          {item.discountPercent ? `${item.discountPercent}%` : item.remark}
+                          {item.discountPercent ? `${item.discountPercent}%` : item.bankName ? <BankLogoBadge bankName={item.bankName} size="sm" /> : item.remark}
                         </td>
                       </tr>
                     ))
@@ -2749,7 +2764,7 @@ export const YearlyClosingModal: React.FC<YearlyClosingModalProps> = ({
                         {item.runningBalance !== undefined ? `৳${item.runningBalance.toLocaleString('en-IN')}` : '-'}
                       </td>
                       <td className="p-2 text-center text-slate-600 text-[11px]">
-                        {item.discountPercent ? `${item.discountPercent}%` : item.remark}
+                        {item.discountPercent ? `${item.discountPercent}%` : item.bankName ? <BankLogoBadge bankName={item.bankName} size="sm" /> : item.remark}
                       </td>
                     </tr>
                   ))}
@@ -2824,7 +2839,12 @@ export const YearlyClosingModal: React.FC<YearlyClosingModalProps> = ({
                     {(viewingClosingStatement.settlementCollectionAmount || viewingClosingStatement.settlementCollection?.amount || 0) > 0 && (
                       <tr className="text-emerald-800 font-bold border-b border-slate-200/50">
                         <td className="py-0.5 text-left">
-                          Settled Amount ({viewingClosingStatement.settlementCollection?.mrNo || 'MR-CLOSE'}{viewingClosingStatement.settlementCollection?.bankName ? ` - ${viewingClosingStatement.settlementCollection.bankName}` : ''}):
+                          <div className="inline-flex items-center gap-1">
+                            Settled Amount ({viewingClosingStatement.settlementCollection?.mrNo || 'MR-CLOSE'})
+                            {viewingClosingStatement.settlementCollection?.bankName && (
+                              <BankLogoBadge bankName={viewingClosingStatement.settlementCollection.bankName} size="sm" />
+                            )}
+                          </div>
                         </td>
                         <td className="py-0.5 text-right font-mono font-bold whitespace-nowrap">
                           - ৳{(viewingClosingStatement.settlementCollectionAmount || viewingClosingStatement.settlementCollection?.amount || 0).toLocaleString('en-IN')}
