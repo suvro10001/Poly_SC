@@ -11,7 +11,17 @@ import {
   FileText, 
   Building 
 } from 'lucide-react';
-import { getBankAndAccountShortTag, BankAndAccountDirectory, resolveFullBankName, resolveFullAccountName } from './BankAndAccountDirectory';
+import {
+  getBankAndAccountShortTag,
+  BankAndAccountDirectory,
+  BankLogoBadge,
+  resolveFullBankName,
+  resolveFullAccountName,
+  renameBankShortCodeOverride,
+  renameAccountShortCodeOverride,
+  clearBankShortCodeOverride,
+  clearAccountShortCodeOverride
+} from './BankAndAccountDirectory';
 import { defaultBanks, defaultAccounts } from '../data/defaultData';
 import { formatDateDDMMYY, parseDateToISO } from '../utils/dateUtils';
 import { isGloballyDeletedId } from '../utils/deletedTracker';
@@ -100,7 +110,7 @@ export const DepositHistoryPage: React.FC<DepositHistoryPageProps> = ({
       const saved = localStorage.getItem('polycables_bank_list');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
     return defaultBanks;
@@ -111,7 +121,7 @@ export const DepositHistoryPage: React.FC<DepositHistoryPageProps> = ({
       const saved = localStorage.getItem('polycables_account_list');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
     return defaultAccounts;
@@ -389,25 +399,26 @@ export const DepositHistoryPage: React.FC<DepositHistoryPageProps> = ({
                     </div>
                   </div>
 
-                  {/* Short Tag Only by Default; Click to Toggle Full Bank & Account Name */}
+                  {/* Short tag and bank logo by default; click to view the account name */}
                   <div className="flex flex-col items-start gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => toggleBankTagExpand(dep.id)}
-                      className="px-2.5 py-1 rounded font-mono font-black text-xs bg-[#061520] hover:bg-[#0c2638] text-amber-300 border border-cyan-500/35 shadow-2xs cursor-pointer transition-colors"
-                      title={isExpanded ? 'Click to hide Bank & Account name' : 'Click to view full Bank & Account name'}
-                    >
-                      {shortTag}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <BankLogoBadge bankName={displayBank} size="sm" />
+                      <button
+                        type="button"
+                        onClick={() => toggleBankTagExpand(dep.id)}
+                        className="px-2.5 py-1 rounded font-mono font-black text-xs bg-[#061520] hover:bg-[#0c2638] text-amber-300 border border-cyan-500/35 shadow-2xs cursor-pointer transition-colors"
+                        title={isExpanded ? 'Click to hide account name' : 'Click to view account name'}
+                      >
+                        {shortTag}
+                      </button>
+                    </div>
                     {isExpanded && (
                       <div
                         onClick={() => toggleBankTagExpand(dep.id)}
                         className="w-full p-2 bg-[#0c2638]/90 rounded-lg border border-cyan-500/30 cursor-pointer"
                         title="Click to hide"
                       >
-                        <div className="text-xs font-semibold text-white">
-                          {displayBank}
-                        </div>
+                        <BankLogoBadge bankName={displayBank} size="sm" />
                         <div className="text-[11px] text-cyan-200 font-mono">
                           A/C: {displayAccount}
                         </div>
@@ -485,21 +496,24 @@ export const DepositHistoryPage: React.FC<DepositHistoryPageProps> = ({
                         const isExpanded = Boolean(expandedBankTagIds[dep.id]);
                         return (
                           <div className="flex flex-col items-start gap-1">
-                            <button
-                              type="button"
-                              onClick={() => toggleBankTagExpand(dep.id)}
-                              className="px-2 py-0.5 rounded font-mono font-black text-[11px] bg-[#061520] hover:bg-[#0c2638] text-amber-300 border border-cyan-500/35 shadow-2xs cursor-pointer transition-colors"
-                              title={isExpanded ? 'Click to hide Bank & Account name' : 'Click to view full Bank & Account name'}
-                            >
-                              {shortTag}
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <BankLogoBadge bankName={displayBank} size="sm" />
+                              <button
+                                type="button"
+                                onClick={() => toggleBankTagExpand(dep.id)}
+                                className="px-2 py-0.5 rounded font-mono font-black text-[11px] bg-[#061520] hover:bg-[#0c2638] text-amber-300 border border-cyan-500/35 shadow-2xs cursor-pointer transition-colors"
+                                title={isExpanded ? 'Click to hide account name' : 'Click to view account name'}
+                              >
+                                {shortTag}
+                              </button>
+                            </div>
                             {isExpanded && (
                               <div
                                 onClick={() => toggleBankTagExpand(dep.id)}
                                 className="flex flex-col bg-[#0c2638]/90 border border-cyan-500/30 rounded-md px-2 py-1 cursor-pointer"
                                 title="Click to hide"
                               >
-                                <span className="font-semibold text-white text-xs">{displayBank}</span>
+                                <BankLogoBadge bankName={displayBank} size="sm" />
                                 <span className="text-[11px] text-cyan-200 font-mono">
                                   A/C: {displayAccount}
                                 </span>
@@ -708,28 +722,50 @@ export const DepositHistoryPage: React.FC<DepositHistoryPageProps> = ({
           bankList={bankList}
           accountList={accountList}
           onAddBank={(name) => {
-            setBankList(prev => [...prev, name]);
-            try { localStorage.setItem('polycables_bank_list', JSON.stringify([...bankList, name])); } catch {}
+            setBankList((prev) => {
+              const next = [...prev, name];
+              localStorage.setItem('polycables_bank_list', JSON.stringify(next));
+              return next;
+            });
           }}
           onDeleteBank={(name) => {
-            setBankList(prev => prev.filter(b => b !== name));
-            try { localStorage.setItem('polycables_bank_list', JSON.stringify(bankList.filter(b => b !== name))); } catch {}
+            clearBankShortCodeOverride(name);
+            setBankList((prev) => {
+              const next = prev.filter((bank) => bank !== name);
+              localStorage.setItem('polycables_bank_list', JSON.stringify(next));
+              return next;
+            });
           }}
           onEditBank={(oldName, newName) => {
-            setBankList(prev => prev.map(b => b === oldName ? newName : b));
-            try { localStorage.setItem('polycables_bank_list', JSON.stringify(bankList.map(b => b === oldName ? newName : b))); } catch {}
+            renameBankShortCodeOverride(oldName, newName);
+            setBankList((prev) => {
+              const next = prev.map((bank) => bank === oldName ? newName : bank);
+              localStorage.setItem('polycables_bank_list', JSON.stringify(next));
+              return next;
+            });
           }}
           onAddAccount={(name) => {
-            setAccountList(prev => [...prev, name]);
-            try { localStorage.setItem('polycables_account_list', JSON.stringify([...accountList, name])); } catch {}
+            setAccountList((prev) => {
+              const next = [...prev, name];
+              localStorage.setItem('polycables_account_list', JSON.stringify(next));
+              return next;
+            });
           }}
           onDeleteAccount={(name) => {
-            setAccountList(prev => prev.filter(a => a !== name));
-            try { localStorage.setItem('polycables_account_list', JSON.stringify(accountList.filter(a => a !== name))); } catch {}
+            clearAccountShortCodeOverride(name);
+            setAccountList((prev) => {
+              const next = prev.filter((account) => account !== name);
+              localStorage.setItem('polycables_account_list', JSON.stringify(next));
+              return next;
+            });
           }}
           onEditAccount={(oldName, newName) => {
-            setAccountList(prev => prev.map(a => a === oldName ? newName : a));
-            try { localStorage.setItem('polycables_account_list', JSON.stringify(accountList.map(a => a === oldName ? newName : a))); } catch {}
+            renameAccountShortCodeOverride(oldName, newName);
+            setAccountList((prev) => {
+              const next = prev.map((account) => account === oldName ? newName : account);
+              localStorage.setItem('polycables_account_list', JSON.stringify(next));
+              return next;
+            });
           }}
           onClose={() => setShowBankDirectoryModal(false)}
         />

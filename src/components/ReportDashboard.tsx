@@ -29,7 +29,7 @@ import { BillPrintPreviewModal } from './BillPrintPreviewModal';
 import { EditCollectionMrModalDialog } from './ExpenseManager';
 import { PolyCablesLogo } from './PolyCablesLogo';
 import { SalesCenterSearchFilter } from './SalesCenterSearchFilter';
-import { getBankAndAccountShortTag, resolveFullBankName, resolveFullAccountName } from './BankAndAccountDirectory';
+import { BankLogoBadge, getBankAndAccountShortTag, resolveFullBankName, resolveFullAccountName } from './BankAndAccountDirectory';
 
 import { recordDeletedEntityId, getGlobalDeletedIds, getClientSyncId } from '../utils/deletedTracker';
 import { isSameSalesCenterForDepositMatch, matchesMrTokenExact } from '../utils/mrNumberHelper';
@@ -4824,7 +4824,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
                         <tr key={ext.id} className="border-b border-amber-300 bg-amber-50/20">
                           <td contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black text-center font-mono">{detailedBankCollectionList.length + idx + 1}</td>
                           <td contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black text-center font-mono">{ext.date}</td>
-                          <td contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black font-bold font-mono text-slate-900">{ext.bankName}</td>
+                          <td className="p-1.5 border-r border-black font-bold font-mono text-slate-900"><BankLogoBadge bankName={ext.bankName} size="sm" /></td>
                           <td contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black font-semibold text-slate-900">{ext.partyName}</td>
                           <td contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black text-slate-800">{ext.address}</td>
                           <td contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 text-right font-bold font-mono">{ext.amount}</td>
@@ -6262,7 +6262,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
                               <tr key={ext.id} className="border-b border-slate-300">
                                 <td className="p-1.5 border-r border-black text-center font-mono">{detailedBankCollectionList.length + idx + 1}</td>
                                 <td className="p-1.5 border-r border-black text-center font-mono">{ext.date}</td>
-                                <td className="p-1.5 border-r border-black font-bold font-mono">{ext.bankName}</td>
+                                <td className="p-1.5 border-r border-black font-bold font-mono"><BankLogoBadge bankName={ext.bankName} size="sm" /></td>
                                 <td className="p-1.5 border-r border-black font-semibold">{ext.partyName}</td>
                                 <td className="p-1.5 border-r border-black">{ext.address}</td>
                                 <td className="p-1.5 text-right font-bold font-mono">{ext.amount}</td>

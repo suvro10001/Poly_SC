@@ -440,8 +440,133 @@ export const ACCOUNT_SHORT_CODE_MAP: Record<string, string> = {
   'm/s rahman & sons': 'R&S'
 };
 
+type ShortCodeOverrides = Record<string, string>;
+
+const BANK_SHORT_CODE_STORAGE_KEY = 'polycables_bank_short_code_overrides';
+const ACCOUNT_SHORT_CODE_STORAGE_KEY = 'polycables_account_short_code_overrides';
+const AUTO_SHORT_CODE_OVERRIDE = '__AUTO__';
+let bankShortCodeOverridesCache: ShortCodeOverrides | null = null;
+let accountShortCodeOverridesCache: ShortCodeOverrides | null = null;
+
+const getShortCodeKey = (name?: string): string => (name || '').trim().toLowerCase();
+
+const readShortCodeOverrides = (storageKey: string): ShortCodeOverrides => {
+  try {
+    const stored = localStorage.getItem(storageKey);
+    if (!stored) return {};
+    const parsed: unknown = JSON.parse(stored);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        ([key, value]) => key.trim() && typeof value === 'string' && value.trim()
+      ).map(([key, value]) => [key.trim().toLowerCase(), (value as string).trim().toUpperCase()])
+    );
+  } catch {
+    return {};
+  }
+};
+
+const getBankShortCodeOverrides = (): ShortCodeOverrides => {
+  if (!bankShortCodeOverridesCache) {
+    bankShortCodeOverridesCache = readShortCodeOverrides(BANK_SHORT_CODE_STORAGE_KEY);
+  }
+  return bankShortCodeOverridesCache;
+};
+
+const getAccountShortCodeOverrides = (): ShortCodeOverrides => {
+  if (!accountShortCodeOverridesCache) {
+    accountShortCodeOverridesCache = readShortCodeOverrides(ACCOUNT_SHORT_CODE_STORAGE_KEY);
+  }
+  return accountShortCodeOverridesCache;
+};
+
+const saveShortCodeOverrides = (
+  kind: 'bank' | 'account',
+  overrides: ShortCodeOverrides
+): void => {
+  const storageKey = kind === 'bank' ? BANK_SHORT_CODE_STORAGE_KEY : ACCOUNT_SHORT_CODE_STORAGE_KEY;
+  const normalized = Object.fromEntries(
+    Object.entries(overrides).filter(([key, value]) => key.trim() && value.trim())
+  );
+  localStorage.setItem(storageKey, JSON.stringify(normalized));
+  if (kind === 'bank') {
+    bankShortCodeOverridesCache = normalized;
+  } else {
+    accountShortCodeOverridesCache = normalized;
+  }
+  window.dispatchEvent(new Event('polycables_short_tags_updated'));
+};
+
+export function setBankShortCodeOverride(bankName: string, shortCode: string): void {
+  const key = getShortCodeKey(bankName);
+  if (!key) return;
+  const overrides = { ...getBankShortCodeOverrides() };
+  if (shortCode.trim()) {
+    overrides[key] = shortCode.trim().toUpperCase();
+  } else {
+    overrides[key] = AUTO_SHORT_CODE_OVERRIDE;
+  }
+  saveShortCodeOverrides('bank', overrides);
+}
+
+export function setAccountShortCodeOverride(accountName: string, shortCode: string): void {
+  const key = getShortCodeKey(accountName);
+  if (!key) return;
+  const overrides = { ...getAccountShortCodeOverrides() };
+  if (shortCode.trim()) {
+    overrides[key] = shortCode.trim().toUpperCase();
+  } else {
+    overrides[key] = AUTO_SHORT_CODE_OVERRIDE;
+  }
+  saveShortCodeOverrides('account', overrides);
+}
+
+const renameShortCodeOverride = (
+  kind: 'bank' | 'account',
+  oldName: string,
+  newName: string
+): void => {
+  const overrides = { ...(kind === 'bank' ? getBankShortCodeOverrides() : getAccountShortCodeOverrides()) };
+  const oldKey = getShortCodeKey(oldName);
+  const newKey = getShortCodeKey(newName);
+  const shortCode = overrides[oldKey];
+  if (!shortCode || !newKey) return;
+  delete overrides[oldKey];
+  overrides[newKey] = shortCode;
+  saveShortCodeOverrides(kind, overrides);
+};
+
+const clearShortCodeOverride = (kind: 'bank' | 'account', name: string): void => {
+  const overrides = { ...(kind === 'bank' ? getBankShortCodeOverrides() : getAccountShortCodeOverrides()) };
+  const key = getShortCodeKey(name);
+  if (!(key in overrides)) return;
+  delete overrides[key];
+  saveShortCodeOverrides(kind, overrides);
+};
+
+const clearShortCodeOverrides = (kind: 'bank' | 'account'): void => {
+  saveShortCodeOverrides(kind, {});
+};
+
+export const renameBankShortCodeOverride = (oldName: string, newName: string): void =>
+  renameShortCodeOverride('bank', oldName, newName);
+
+export const renameAccountShortCodeOverride = (oldName: string, newName: string): void =>
+  renameShortCodeOverride('account', oldName, newName);
+
+export const clearBankShortCodeOverride = (name: string): void =>
+  clearShortCodeOverride('bank', name);
+
+export const clearAccountShortCodeOverride = (name: string): void =>
+  clearShortCodeOverride('account', name);
+
+export const clearAllBankShortCodeOverrides = (): void => clearShortCodeOverrides('bank');
+export const clearAllAccountShortCodeOverrides = (): void => clearShortCodeOverrides('account');
+
 export function getBankShortCode(bankName?: string): string {
   if (!bankName) return '';
+  const override = getBankShortCodeOverrides()[getShortCodeKey(bankName)];
+  if (override && override !== AUTO_SHORT_CODE_OVERRIDE) return override;
   const clean = bankName.trim().toLowerCase();
   if (BANK_SHORT_CODE_MAP[clean]) {
     return BANK_SHORT_CODE_MAP[clean];
@@ -462,6 +587,8 @@ export function getBankShortCode(bankName?: string): string {
 
 export function getAccountShortCode(accountName?: string): string {
   if (!accountName) return '';
+  const override = getAccountShortCodeOverrides()[getShortCodeKey(accountName)];
+  if (override && override !== AUTO_SHORT_CODE_OVERRIDE) return override;
   const clean = accountName.trim().toLowerCase();
   if (ACCOUNT_SHORT_CODE_MAP[clean]) {
     return ACCOUNT_SHORT_CODE_MAP[clean];
@@ -498,7 +625,10 @@ export function getBankAndAccountShortTag(
   accountName?: string,
   fallbackTag?: string
 ): string {
-  if (fallbackTag && fallbackTag.trim()) {
+  const hasCustomShortCode =
+    Boolean(getBankShortCodeOverrides()[getShortCodeKey(bankName)]) ||
+    Boolean(getAccountShortCodeOverrides()[getShortCodeKey(accountName)]);
+  if (!hasCustomShortCode && fallbackTag && fallbackTag.trim()) {
     const fbClean = fallbackTag.trim();
     if (fbClean === 'H/O' || fbClean.toLowerCase().includes('head office')) {
       return 'H/O';
@@ -670,10 +800,12 @@ export interface BankAndAccountDirectoryProps {
   onAddBank?: (name: string) => void;
   onDeleteBank?: (name: string) => void;
   onEditBank?: (oldName: string, newName: string) => void;
+  onEditBankShortCode?: (bankName: string, shortCode: string) => void;
   onResetBanks?: () => void;
   onAddAccount?: (name: string) => void;
   onDeleteAccount?: (name: string) => void;
   onEditAccount?: (oldName: string, newName: string) => void;
+  onEditAccountShortCode?: (accountName: string, shortCode: string) => void;
   onResetAccounts?: () => void;
   isModal?: boolean;
   onClose?: () => void;
@@ -685,10 +817,12 @@ export const BankAndAccountDirectory: React.FC<BankAndAccountDirectoryProps> = (
   onAddBank,
   onDeleteBank,
   onEditBank,
+  onEditBankShortCode,
   onResetBanks,
   onAddAccount,
   onDeleteAccount,
   onEditAccount,
+  onEditAccountShortCode,
   onResetAccounts,
   isModal = false,
   onClose
@@ -704,8 +838,12 @@ export const BankAndAccountDirectory: React.FC<BankAndAccountDirectoryProps> = (
   // Edit states
   const [editingBankOld, setEditingBankOld] = useState<string | null>(null);
   const [editingBankText, setEditingBankText] = useState('');
+  const [editingBankShortCodeFor, setEditingBankShortCodeFor] = useState<string | null>(null);
+  const [editingBankShortCodeText, setEditingBankShortCodeText] = useState('');
   const [editingAccountOld, setEditingAccountOld] = useState<string | null>(null);
   const [editingAccountText, setEditingAccountText] = useState('');
+  const [editingAccountShortCodeFor, setEditingAccountShortCodeFor] = useState<string | null>(null);
+  const [editingAccountShortCodeText, setEditingAccountShortCodeText] = useState('');
 
   const filteredBanks = useMemo(() => {
     return bankList.filter((b) => b.toLowerCase().includes(bankSearch.toLowerCase().trim()));
@@ -738,6 +876,16 @@ export const BankAndAccountDirectory: React.FC<BankAndAccountDirectoryProps> = (
     setEditingBankText('');
   };
 
+  const handleSaveBankShortCode = (bankName: string) => {
+    if (onEditBankShortCode) {
+      onEditBankShortCode(bankName, editingBankShortCodeText);
+    } else {
+      setBankShortCodeOverride(bankName, editingBankShortCodeText);
+    }
+    setEditingBankShortCodeFor(null);
+    setEditingBankShortCodeText('');
+  };
+
   const handleCreateAccount = (e: React.FormEvent) => {
     e.preventDefault();
     const clean = newAccountInput.trim();
@@ -761,6 +909,16 @@ export const BankAndAccountDirectory: React.FC<BankAndAccountDirectoryProps> = (
     setEditingAccountText('');
   };
 
+  const handleSaveAccountShortCode = (accountName: string) => {
+    if (onEditAccountShortCode) {
+      onEditAccountShortCode(accountName, editingAccountShortCodeText);
+    } else {
+      setAccountShortCodeOverride(accountName, editingAccountShortCodeText);
+    }
+    setEditingAccountShortCodeFor(null);
+    setEditingAccountShortCodeText('');
+  };
+
   const content = (
     <div className="space-y-6 text-white">
       {/* Top Header & Sub-Tab Bar */}
@@ -774,7 +932,7 @@ export const BankAndAccountDirectory: React.FC<BankAndAccountDirectoryProps> = (
               Bank &amp; Account Directory
             </h2>
             <p className="text-xs text-slate-300 font-medium">
-              Manage authorized banks, company accounts, and automatic short tags (e.g. PBL (P.E))
+              Manage banks, accounts, and custom short tags (clear a code to use its automatic value)
             </p>
           </div>
         </div>
@@ -871,7 +1029,7 @@ export const BankAndAccountDirectory: React.FC<BankAndAccountDirectoryProps> = (
               <thead className="bg-[#0c2638] text-cyan-200 font-bold uppercase tracking-wider text-[11px] border-b border-cyan-500/30">
                 <tr>
                   <th className="py-2.5 px-3 w-14">#</th>
-                  <th className="py-2.5 px-3">Bank Name</th>
+                  <th className="py-2.5 px-3">Bank Logo</th>
                   <th className="py-2.5 px-3 w-28 text-center">Short Code</th>
                   <th className="py-2.5 px-3 w-40 text-center">Sample Tag (P.E)</th>
                   <th className="py-2.5 px-3 w-28 text-center">Actions</th>
@@ -914,16 +1072,49 @@ export const BankAndAccountDirectory: React.FC<BankAndAccountDirectoryProps> = (
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-center space-x-2">
-                            <BankLogoBadge bankName={bank} size="sm" />
-                            <span>{bank}</span>
-                          </div>
+                          <BankLogoBadge bankName={bank} size="sm" />
                         )}
                       </td>
                       <td className="py-2 px-3 text-center">
-                        <span className="inline-block px-2 py-0.5 bg-cyan-500/15 text-cyan-200 font-mono font-bold rounded border border-cyan-400/35 text-[11px]">
-                          {shortCode}
-                        </span>
+                        {editingBankShortCodeFor === bank ? (
+                          <div className="inline-flex items-center gap-1">
+                            <input
+                              type="text"
+                              aria-label={`Short code for ${bank}`}
+                              value={editingBankShortCodeText}
+                              onChange={(e) => setEditingBankShortCodeText(e.target.value)}
+                              placeholder="Auto"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveBankShortCode(bank);
+                                if (e.key === 'Escape') setEditingBankShortCodeFor(null);
+                              }}
+                              maxLength={12}
+                              autoFocus
+                              className="w-20 px-1.5 py-0.5 bg-[#061520] text-cyan-200 font-mono font-bold rounded border border-cyan-400/50 text-[11px] focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveBankShortCode(bank)}
+                              className="p-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded cursor-pointer"
+                              title="Save short code"
+                            >
+                              <Check className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingBankShortCodeFor(bank);
+                              setEditingBankShortCodeText(shortCode);
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-500/15 text-cyan-200 font-mono font-bold rounded border border-cyan-400/35 text-[11px] cursor-pointer hover:bg-cyan-500/25"
+                            title="Edit bank short code"
+                          >
+                            {shortCode}
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                        )}
                       </td>
                       <td className="py-2 px-3 text-center">
                         <span className="inline-block px-2 py-0.5 bg-emerald-500/15 text-emerald-200 font-mono font-bold rounded border border-emerald-400/35 text-[11px]">
@@ -1078,9 +1269,45 @@ export const BankAndAccountDirectory: React.FC<BankAndAccountDirectoryProps> = (
                         )}
                       </td>
                       <td className="py-2 px-3 text-center">
-                        <span className="inline-block px-2 py-0.5 bg-purple-500/20 text-purple-200 font-mono font-bold rounded border border-purple-400/35 text-[11px]">
-                          {shortCode}
-                        </span>
+                        {editingAccountShortCodeFor === account ? (
+                          <div className="inline-flex items-center gap-1">
+                            <input
+                              type="text"
+                              aria-label={`Short code for ${account}`}
+                              value={editingAccountShortCodeText}
+                              onChange={(e) => setEditingAccountShortCodeText(e.target.value)}
+                              placeholder="Auto"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveAccountShortCode(account);
+                                if (e.key === 'Escape') setEditingAccountShortCodeFor(null);
+                              }}
+                              maxLength={12}
+                              autoFocus
+                              className="w-20 px-1.5 py-0.5 bg-[#061520] text-purple-200 font-mono font-bold rounded border border-purple-400/50 text-[11px] focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveAccountShortCode(account)}
+                              className="p-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded cursor-pointer"
+                              title="Save short code"
+                            >
+                              <Check className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingAccountShortCodeFor(account);
+                              setEditingAccountShortCodeText(shortCode);
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-500/20 text-purple-200 font-mono font-bold rounded border border-purple-400/35 text-[11px] cursor-pointer hover:bg-purple-500/30"
+                            title="Edit account short code"
+                          >
+                            {shortCode}
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                        )}
                       </td>
                       <td className="py-2 px-3 text-center">
                         <span className="inline-block px-2 py-0.5 bg-emerald-500/15 text-emerald-200 font-mono font-bold rounded border border-emerald-400/35 text-[11px]">

@@ -4,6 +4,7 @@ import { PageHeaderWithActions } from './PageHeaderWithActions';
 import { DateInputWithPicker } from './DateInputWithPicker';
 import { formatDateDDMMYY } from '../utils/dateUtils';
 import { isGloballyDeletedId } from '../utils/deletedTracker';
+import { BankLogoBadge } from './BankAndAccountDirectory';
 import { 
   CreditCard, 
   Plus, 
@@ -304,7 +305,7 @@ export const ChequeInHandPage: React.FC<ChequeInHandPageProps> = ({
           <table className="w-full text-left text-sm text-slate-200">
             <thead className="bg-[#0c2638] text-xs font-semibold text-cyan-200 uppercase tracking-wider border-b border-cyan-500/30">
               <tr>
-                <th className="py-3 px-4">Cheque # & Issuing Bank</th>
+                <th className="py-3 px-4">Cheque # & Bank Logo</th>
                 <th className="py-3 px-4">Payer / Customer</th>
                 <th className="py-3 px-4">Maturity Date</th>
                 <th className="py-3 px-4 text-right">Cheque Amount</th>
@@ -324,7 +325,10 @@ export const ChequeInHandPage: React.FC<ChequeInHandPageProps> = ({
                   <tr key={chq.id} className="hover:bg-cyan-500/[0.06] transition-colors">
                     <td className="py-3.5 px-4">
                       <div className="font-bold text-cyan-200 font-mono text-xs">{chq.chequeNo}</div>
-                      <div className="text-xs text-slate-400">{chq.bankName} • {chq.branch}</div>
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <BankLogoBadge bankName={chq.bankName} size="sm" />
+                        <span>{chq.branch}</span>
+                      </div>
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-white">{chq.payerName}</div>

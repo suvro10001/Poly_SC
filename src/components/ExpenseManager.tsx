@@ -432,12 +432,14 @@ interface ExpenseManagerProps {
   onAddBank?: (name: string) => void;
   onDeleteBank?: (name: string) => void;
   onEditBank?: (oldName: string, newName: string) => void;
+  onEditBankShortCode?: (bankName: string, shortCode: string) => void;
   onResetBanks?: () => void;
   accountList?: string[];
   setAccountList?: React.Dispatch<React.SetStateAction<string[]>>;
   onAddAccount?: (name: string) => void;
   onDeleteAccount?: (name: string) => void;
   onEditAccount?: (oldName: string, newName: string) => void;
+  onEditAccountShortCode?: (accountName: string, shortCode: string) => void;
   onResetAccounts?: () => void;
   salespersons: Salesperson[];
   allSalespersons?: Salesperson[];
@@ -3291,12 +3293,14 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
   onAddBank: propsOnAddBank,
   onDeleteBank: propsOnDeleteBank,
   onEditBank: propsOnEditBank,
+  onEditBankShortCode,
   onResetBanks: propsOnResetBanks,
   accountList: propsAccountList,
   setAccountList: propsSetAccountList,
   onAddAccount: propsOnAddAccount,
   onDeleteAccount: propsOnDeleteAccount,
   onEditAccount: propsOnEditAccount,
+  onEditAccountShortCode,
   onResetAccounts: propsOnResetAccounts,
   salespersons,
   allSalespersons,
@@ -3560,11 +3564,11 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           const sanitized = parsed
             .map((item: any) => (typeof item === 'string' ? item : (item?.name || item?.bankName || '')).trim())
             .filter((item) => !isInvalidBankOrAccount(item));
-          if (sanitized.length > 0) return sanitized;
+          if (parsed.length === 0 || sanitized.length > 0) return sanitized;
         }
       } catch (e) {}
     }
@@ -3575,11 +3579,11 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           const sanitized = parsed
             .map((item: any) => (typeof item === 'string' ? item : (item?.name || item?.accountName || '')).trim())
             .filter((item) => !isInvalidBankOrAccount(item));
-          if (sanitized.length > 0) return sanitized;
+          if (parsed.length === 0 || sanitized.length > 0) return sanitized;
         }
       } catch (e) {}
     }
@@ -3590,19 +3594,19 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
   const rawAccountList = propsAccountList || localAccountList;
 
   const bankList = useMemo(() => {
-    if (!Array.isArray(rawBankList) || rawBankList.length === 0) return DEFAULT_BANKS;
+    if (!Array.isArray(rawBankList)) return DEFAULT_BANKS;
     const sanitized = rawBankList
       .map((b: any) => (typeof b === 'string' ? b : (b?.name || b?.bankName || '')).trim())
       .filter((b) => !isInvalidBankOrAccount(b));
-    return sanitized.length > 0 ? sanitized : DEFAULT_BANKS;
+    return rawBankList.length === 0 || sanitized.length > 0 ? sanitized : DEFAULT_BANKS;
   }, [rawBankList]);
 
   const accountList = useMemo(() => {
-    if (!Array.isArray(rawAccountList) || rawAccountList.length === 0) return DEFAULT_ACCOUNTS;
+    if (!Array.isArray(rawAccountList)) return DEFAULT_ACCOUNTS;
     const sanitized = rawAccountList
       .map((a: any) => (typeof a === 'string' ? a : (a?.name || a?.accountName || '')).trim())
       .filter((a) => !isInvalidBankOrAccount(a));
-    return sanitized.length > 0 ? sanitized : DEFAULT_ACCOUNTS;
+    return rawAccountList.length === 0 || sanitized.length > 0 ? sanitized : DEFAULT_ACCOUNTS;
   }, [rawAccountList]);
 
   const toSafeStr = (v: any) => (typeof v === 'string' ? v : (v?.name || v?.bankName || v?.accountName || String(v || ''))).trim();
@@ -12776,9 +12780,6 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                                 <div className="flex flex-col">
                                   <div className="flex items-center space-x-2">
                                     <BankLogoBadge bankName={resolvedBank} size="md" />
-                                    <span className="font-extrabold text-white text-xs">
-                                      {resolvedBank}
-                                    </span>
                                     <span className={`inline-flex items-center ${isHo ? 'bg-amber-500/20 text-amber-200 border-amber-400/40' : 'bg-sky-500/20 text-sky-200 border-sky-400/35'} px-1.5 py-0.2 rounded text-[10px] font-black border font-mono`}>
                                       {shortTag}
                                     </span>
@@ -13046,7 +13047,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                       <BankLogoBadge bankName={entry.bankName} size="md" />
                       <div className="leading-tight">
                         <div className="text-[11px] font-extrabold text-white whitespace-nowrap">
-                          {entry.bankName} <span className="text-[10px] text-cyan-300 font-mono">({entry.count})</span>
+                          <span className="text-[10px] text-cyan-300 font-mono">({entry.count})</span>
                         </div>
                         <div className="text-[11px] font-mono font-black text-emerald-300">
                           ৳{entry.total.toLocaleString('en-IN')}
@@ -13302,7 +13303,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
           </div>
 
           {/* RECORDED BANK DEPOSITS TABLE */}
-          <div className="cyber-glass-card rounded-2xl overflow-hidden w-full relative">
+          <div className="cyber-glass-card rounded-2xl overflow-x-hidden overflow-y-auto w-full relative max-h-[calc(100vh-18rem)] min-h-[10rem]">
 
             {/* MOBILE CARDS VIEW (md:hidden) */}
             <div className="block md:hidden p-2.5 space-y-2.5 bg-[#071824]/60">
@@ -13336,7 +13337,6 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                           <div className="inline-flex items-center space-x-2 py-1 px-2 rounded-lg bg-[#061520] border border-cyan-500/30 font-mono text-[10px] font-black text-white select-none">
                             <BankLogoBadge bankName={isHo ? 'H/O' : (fullBank || shortTag)} size="md" />
                             <div className="flex flex-col leading-tight">
-                              <span className="font-extrabold text-white text-[10px] font-sans">{isHo ? 'Head Office' : fullBank}</span>
                               <span className="font-bold text-cyan-300 text-[9px]">{shortTag}</span>
                             </div>
                           </div>
@@ -13605,7 +13605,6 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                                 <div className="inline-flex items-center space-x-2 py-1 px-2 rounded-lg bg-[#061520] border border-cyan-500/30 text-white select-none">
                                   <BankLogoBadge bankName={isHo ? 'H/O' : resolvedBank} size="md" />
                                   <div className="flex flex-col leading-tight">
-                                    <span className="font-extrabold text-white text-[11px]">{isHo ? 'Head Office' : resolvedBank}</span>
                                     <span className="font-mono font-bold text-cyan-300 text-[10px]">{shortTag}</span>
                                   </div>
                                 </div>
@@ -14397,7 +14396,6 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                                   <div className="flex flex-col gap-0.5">
                                     <div className="font-bold text-cyan-200 flex items-center gap-1.5 flex-wrap">
                                       <BankLogoBadge bankName={col.bankName || 'Bank Cheque'} size="sm" />
-                                      <span>{col.bankName || 'Bank Cheque'}</span>
                                       {col.chequeNo && (
                                         <span className="font-mono text-[10px] bg-[#061520] text-cyan-200 px-1.5 py-0.5 rounded border border-cyan-500/30 font-bold">
                                           #{col.chequeNo}
@@ -14453,7 +14451,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                                           <div className="flex flex-col gap-0.5">
                                             <span className="inline-flex items-center space-x-1.5 text-cyan-200 bg-cyan-500/20 border border-cyan-400/35 px-2 py-0.5 rounded text-[10px] font-extrabold w-fit shadow-2xs">
                                               <BankLogoBadge bankName={bankTitle} size="sm" />
-                                              <span>Deposited to {bankTitle}</span>
+                                              <span>Deposited to bank</span>
                                             </span>
                                             {acctStr && (
                                               <span className="text-[10px] text-slate-300 font-mono">
@@ -14732,7 +14730,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                                   </td>
                                   <td className="p-2.5 font-mono text-[11px] text-cyan-200">
                                     <span className="font-bold">{col.chequeNo || '-'}</span>
-                                    {col.bankName && <span className="block text-[10px] text-slate-400">{col.bankName}</span>}
+                                    {col.bankName && <BankLogoBadge bankName={col.bankName} size="sm" className="mt-1" />}
                                   </td>
                                   <td className="p-2.5 text-right font-black text-cyan-200 font-mono text-xs">
                                     ৳{col.amount.toLocaleString('en-IN')}
@@ -16383,8 +16381,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                           {col.paymentType === 'cheque' ? (
                             <div className="space-y-0.5">
                               <div className="font-bold text-cyan-200 flex items-center space-x-1">
-                                <Landmark className="w-3 h-3 text-cyan-300 inline" />
-                                <span>{col.bankName || 'Bank N/A'}</span>
+                                <BankLogoBadge bankName={col.bankName || 'Bank N/A'} size="sm" />
                               </div>
                               <div className="text-slate-300 font-mono text-[10px]">
                                 CQ#: <span className="font-bold text-white">{col.chequeNo || 'N/A'}</span>
@@ -17730,9 +17727,9 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-bold">Cheque No & Bank:</span>
-                  <span className="text-cyan-200 font-bold font-mono">
-                    #{chequeActionModal.collection.chequeNo || 'N/A'} ({chequeActionModal.collection.bankName || 'Bank'})
-                  </span>
+                  <div className="inline-flex items-center gap-1 text-cyan-200 font-bold font-mono">
+                    #{chequeActionModal.collection.chequeNo || 'N/A'} <BankLogoBadge bankName={chequeActionModal.collection.bankName || 'Bank'} size="sm" />
+                  </div>
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-bold">Collection Date:</span>
@@ -17832,10 +17829,12 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
           onAddBank={handleAddBank}
           onDeleteBank={handleDeleteBank}
           onEditBank={handleEditBank}
+          onEditBankShortCode={onEditBankShortCode}
           onResetBanks={handleResetBanks}
           onAddAccount={handleAddAccount}
           onDeleteAccount={handleDeleteAccount}
           onEditAccount={handleEditAccount}
+          onEditAccountShortCode={onEditAccountShortCode}
           onResetAccounts={handleResetAccounts}
           onClose={() => setShowBankManagerModal(false)}
         />

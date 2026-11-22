@@ -3,6 +3,7 @@ import { BankDeposit, CollectionMR } from '../types';
 import { findDuplicateDepositGroups, DuplicateDepositGroup } from '../utils/bankDepositDuplicateChecker';
 import { formatDateDDMMYY } from '../utils/dateUtils';
 import { X, Trash2, CheckCircle, AlertTriangle, Layers } from 'lucide-react';
+import { BankLogoBadge } from './BankAndAccountDirectory';
 
 interface DepositDuplicateReviewModalProps {
   isOpen: boolean;
@@ -138,7 +139,8 @@ export const DepositDuplicateReviewModal: React.FC<DepositDuplicateReviewModalPr
                             <div className="text-[11px] text-slate-400 flex items-center space-x-2 mt-0.5">
                               <span>Date: {formatDateDDMMYY(dep.depositDate || dep.date)}</span>
                               <span>•</span>
-                              <span>{dep.bankName} ({dep.accountName})</span>
+                              <BankLogoBadge bankName={dep.bankName} size="sm" />
+                              <span>A/C: {dep.accountName}</span>
                               {dIdx === 0 && (
                                 <span className="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded text-[9px] font-bold">
                                   Primary (Keep)

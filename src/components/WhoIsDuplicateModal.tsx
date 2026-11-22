@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DuplicateDatePartyAmountGroup } from '../utils/bankDepositDuplicateChecker';
 import { formatDateDDMMYY } from '../utils/dateUtils';
 import { X, Trash2, CheckCircle2, HelpCircle, AlertTriangle } from 'lucide-react';
+import { BankLogoBadge } from './BankAndAccountDirectory';
 
 interface WhoIsDuplicateModalProps {
   isOpen: boolean;
@@ -173,9 +174,11 @@ export const WhoIsDuplicateModal: React.FC<WhoIsDuplicateModalProps> = ({
                       className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-between text-xs"
                     >
                       <div>
-                        <span className="font-bold text-purple-300">
-                          Bank Deposit ({d.bankName} - {d.accountName})
-                        </span>
+                        <div className="inline-flex items-center gap-2 font-bold text-purple-300">
+                          <span>Bank Deposit</span>
+                          <BankLogoBadge bankName={d.bankName} size="sm" />
+                          <span>A/C: {d.accountName}</span>
+                        </div>
                         <div className="text-[11px] text-slate-400">
                           Voucher: {d.voucherNo || 'N/A'} • {d.remarks || 'Deposit Entry'}
                         </div>

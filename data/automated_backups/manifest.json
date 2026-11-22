@@ -1,7 +1,7 @@
 {
   "lastBackupDate": "2026-11-22",
   "lastBackupTimestamp": "2026-11-22T06:06:58.694Z",
-  "totalSnapshots": 1,
+  "totalSnapshots": 2,
   "history": [
     {
       "dateKey": "2026-11-22",
@@ -9,6 +9,13 @@
       "filename": "backup-2026-11-22.json",
       "sizeBytes": 41070,
       "recordCount": 127
+    },
+    {
+      "dateKey": "2026-11-21",
+      "timestamp": "2026-11-21T06:48:30.736Z",
+      "filename": "backup-2026-11-21.json",
+      "sizeBytes": 1708124,
+      "recordCount": 945
     }
   ]
 }

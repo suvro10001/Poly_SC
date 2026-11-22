@@ -29,7 +29,17 @@ import { exportBillToExcel } from './utils/excelExporter';
 import { getPriceListSnapshots, normalizePriceSnapshots, pruneDeletedIdsFromSnapshots, reconcileCatalogItemsWithActiveSnapshot, savePriceListSnapshots } from './utils/priceCircularHelper';
 import { convertToTakaWords } from './utils/numberToWords';
 import { Navbar } from './components/Navbar';
-import { getBankAndAccountShortTag } from './components/BankAndAccountDirectory';
+import {
+  getBankAndAccountShortTag,
+  renameBankShortCodeOverride,
+  renameAccountShortCodeOverride,
+  setBankShortCodeOverride,
+  setAccountShortCodeOverride,
+  clearBankShortCodeOverride,
+  clearAccountShortCodeOverride,
+  clearAllBankShortCodeOverrides,
+  clearAllAccountShortCodeOverrides
+} from './components/BankAndAccountDirectory';
 import { computeBranchRunningBillNo, findHeadOfficeBranch, withHeadOfficeForAdmin } from './utils/salesCenterHelper';
 import { checkCanTakeEntry, isOnline, useConnectivityStatus, triggerOfflineWarning } from './utils/cloudConnection';
 import { Sidebar } from './components/Sidebar';
@@ -75,7 +85,7 @@ const PriceUpdateHistoryPage = React.lazy(viewModuleLoaders.price_history);
 const ApproveExpenseHub = React.lazy(viewModuleLoaders.approved_menu);
 
 import { getItemFactoryImportQty } from './utils/stockHelper';
-import { autoFixStoredBillsWithMasterCatalog, autoFixBillLineItemWithMasterCatalog } from './utils/itemMatcher';
+import { autoFixBillLineItemWithMasterCatalog } from './utils/itemMatcher';
 import {
   cleanCategoryLabel,
   getAllCategories,
@@ -2051,11 +2061,11 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           const sanitized = parsed
             .map((item: any) => toCleanBankOrAccountName(item))
             .filter((item) => item && !isInvalidStorageEntry(item));
-          if (sanitized.length > 0) return sanitized;
+          if (parsed.length === 0 || sanitized.length > 0) return sanitized;
         }
       } catch (e) {}
     }
@@ -2067,11 +2077,11 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           const sanitized = parsed
             .map((item: any) => toCleanBankOrAccountName(item))
             .filter((item) => item && !isInvalidStorageEntry(item));
-          if (sanitized.length > 0) return sanitized;
+          if (parsed.length === 0 || sanitized.length > 0) return sanitized;
         }
       } catch (e) {}
     }
@@ -2306,6 +2316,7 @@ export default function App() {
     if (!checkCanTakeEntry('Delete Bank', (msg) => setAppToast({ text: msg, type: 'error' }))) {
       return;
     }
+    clearBankShortCodeOverride(name);
     const target = toCleanBankOrAccountName(name).toLowerCase();
     setBankList((prev) => {
       const safePrev = (prev || []).map((b) => toCleanBankOrAccountName(b)).filter(Boolean);
@@ -2322,6 +2333,7 @@ export default function App() {
     }
     const clean = toCleanBankOrAccountName(newName);
     if (!clean) return;
+    renameBankShortCodeOverride(oldName, clean);
     const oldTarget = toCleanBankOrAccountName(oldName).toLowerCase();
     setBankList((prev) => {
       const safePrev = (prev || []).map((b) => toCleanBankOrAccountName(b)).filter(Boolean);
@@ -2336,6 +2348,7 @@ export default function App() {
     if (!checkCanTakeEntry('Reset Banks', (msg) => setAppToast({ text: msg, type: 'error' }))) {
       return;
     }
+    clearAllBankShortCodeOverrides();
     setBankList(defaultBanks);
     safeSetStorageItem('polycables_bank_list', JSON.stringify(defaultBanks), defaultBanks);
     scheduleCloudSync({ bankList: defaultBanks }, true);
@@ -2361,6 +2374,7 @@ export default function App() {
     if (!checkCanTakeEntry('Delete Account', (msg) => setAppToast({ text: msg, type: 'error' }))) {
       return;
     }
+    clearAccountShortCodeOverride(name);
     const target = toCleanBankOrAccountName(name).toLowerCase();
     setAccountList((prev) => {
       const safePrev = (prev || []).map((a) => toCleanBankOrAccountName(a)).filter(Boolean);
@@ -2377,6 +2391,7 @@ export default function App() {
     }
     const clean = toCleanBankOrAccountName(newName);
     if (!clean) return;
+    renameAccountShortCodeOverride(oldName, clean);
     const oldTarget = toCleanBankOrAccountName(oldName).toLowerCase();
     setAccountList((prev) => {
       const safePrev = (prev || []).map((a) => toCleanBankOrAccountName(a)).filter(Boolean);
@@ -2391,9 +2406,24 @@ export default function App() {
     if (!checkCanTakeEntry('Reset Accounts', (msg) => setAppToast({ text: msg, type: 'error' }))) {
       return;
     }
+    clearAllAccountShortCodeOverrides();
     setAccountList(defaultAccounts);
     safeSetStorageItem('polycables_account_list', JSON.stringify(defaultAccounts), defaultAccounts);
     scheduleCloudSync({ accountList: defaultAccounts }, true);
+  }, []);
+
+  const handleEditBankShortCode = useCallback((bankName: string, shortCode: string) => {
+    if (!checkCanTakeEntry('Edit Bank Short Code', (msg) => setAppToast({ text: msg, type: 'error' }))) {
+      return;
+    }
+    setBankShortCodeOverride(bankName, shortCode);
+  }, []);
+
+  const handleEditAccountShortCode = useCallback((accountName: string, shortCode: string) => {
+    if (!checkCanTakeEntry('Edit Account Short Code', (msg) => setAppToast({ text: msg, type: 'error' }))) {
+      return;
+    }
+    setAccountShortCodeOverride(accountName, shortCode);
   }, []);
 
   const handleDeleteBankDeposit = useCallback((id: string) => {
@@ -6037,8 +6067,8 @@ export default function App() {
           requisitions,
           customCategories: (window as any)._customCategories || [],
           orderedCategories: (window as any)._orderedCategories || [],
-          bankList: bankListRef.current && bankListRef.current.length > 0 ? bankListRef.current : defaultBanks,
-          accountList: accountListRef.current && accountListRef.current.length > 0 ? accountListRef.current : defaultAccounts,
+          bankList: bankListRef.current,
+          accountList: accountListRef.current,
           company,
           header
         }), {
@@ -6588,33 +6618,6 @@ export default function App() {
       scheduleCloudSync({ closings }, true);
     }
   }, [closings]);
-
-  // Auto-fix unsaved / fuzzy item names in previous bills matching Master Item List (>= 70% name match + 100% price match)
-  // Deferred & gated behind actual catalog additions/updates so startup renders instantaneously without main-thread stalls
-  const lastAutoFixItemSigRef = useRef<string>(`${items.length}`);
-  useEffect(() => {
-    const sig = `${items.length}`;
-    if (!isRemoteSyncDone.current) {
-      lastAutoFixItemSigRef.current = sig;
-      return;
-    }
-    if (sig === lastAutoFixItemSigRef.current) return;
-    lastAutoFixItemSigRef.current = sig;
-    if (isSyncingFromRemote.current || isRestoringFirestoreRef.current || Date.now() - lastRestoreTimestampRef.current < 15000) return;
-    if (!items || items.length === 0 || !storedBillsRef.current || storedBillsRef.current.length === 0) return;
-    const timer = setTimeout(() => {
-      if (isSyncingFromRemote.current || isRestoringFirestoreRef.current || Date.now() - lastRestoreTimestampRef.current < 15000) return;
-      const currentBills = storedBillsRef.current;
-      const { fixedBills, totalFixedCount } = autoFixStoredBillsWithMasterCatalog(currentBills, items);
-      if (totalFixedCount > 0) {
-        setStoredBills(fixedBills);
-        if (isRemoteSyncDone.current && !isSyncingFromRemote.current) {
-          scheduleCloudSync({ storedBills: fixedBills });
-        }
-      }
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [items]);
 
   // Start a fresh new bill
   const handleNewBill = (forceNewTab: boolean = false, isOfficeBill: boolean = false) => {
@@ -7330,7 +7333,8 @@ export default function App() {
       };
 
       const sanitizeRestoreList = (raw: any[], fallback: string[]): string[] => {
-        if (!Array.isArray(raw) || raw.length === 0) return fallback;
+        if (!Array.isArray(raw)) return fallback;
+        if (raw.length === 0) return [];
         const res: string[] = [];
         const seen = new Set<string>();
         for (const itm of raw) {
@@ -9180,12 +9184,14 @@ export default function App() {
               onAddBank={handleAddBank}
               onDeleteBank={handleDeleteBank}
               onEditBank={handleEditBank}
+              onEditBankShortCode={handleEditBankShortCode}
               onResetBanks={handleResetBanks}
               accountList={accountList}
               setAccountList={setAccountList}
               onAddAccount={handleAddAccount}
               onDeleteAccount={handleDeleteAccount}
               onEditAccount={handleEditAccount}
+              onEditAccountShortCode={handleEditAccountShortCode}
               onResetAccounts={handleResetAccounts}
               salespersons={visibleSalespersons}
               allSalespersons={salespersons}
@@ -9283,12 +9289,14 @@ export default function App() {
                 onAddBank={handleAddBank}
                 onDeleteBank={handleDeleteBank}
                 onEditBank={handleEditBank}
+                onEditBankShortCode={handleEditBankShortCode}
                 onResetBanks={handleResetBanks}
                 accountList={accountList}
                 setAccountList={setAccountList}
                 onAddAccount={handleAddAccount}
                 onDeleteAccount={handleDeleteAccount}
                 onEditAccount={handleEditAccount}
+                onEditAccountShortCode={handleEditAccountShortCode}
                 onResetAccounts={handleResetAccounts}
                 company={company}
                 setCompany={setCompany}
