@@ -34,6 +34,10 @@ export default defineConfig(() => {
       // HMR and WebSocket server are disabled in AI Studio preview environment
       hmr: false,
       ws: false as const,
+      allowedHosts: ['poly.shannonit.org'],
+    },
+    preview: {
+      allowedHosts: ['poly.shannonit.org'],
     },
   };
 });
