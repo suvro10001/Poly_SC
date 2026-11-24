@@ -873,7 +873,6 @@ export const StoredBillsDirectory: React.FC<StoredBillsDirectoryProps> = ({
           const b = selectedBill;
           setSelectedBill(null);
           setBillToPrint(b);
-          setTimeout(() => triggerAutoConfiguredPrint('bill'), 80);
           return;
         }
       }
@@ -921,9 +920,6 @@ export const StoredBillsDirectory: React.FC<StoredBillsDirectoryProps> = ({
     if (mode) {
       setPadHeaderMode(mode);
       setBillToPrint(bill);
-      setTimeout(() => {
-        triggerAutoConfiguredPrint('bill');
-      }, 100);
     } else {
       // Open Print Preview Modal with option selectors
       setBillToPrint(bill);
@@ -2290,9 +2286,6 @@ export const StoredBillsDirectory: React.FC<StoredBillsDirectoryProps> = ({
                     const b = selectedBill;
                     setSelectedBill(null);
                     setBillToPrint(b);
-                    setTimeout(() => {
-                      triggerAutoConfiguredPrint('bill');
-                    }, 80);
                   }}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1 shadow-sm transition-colors cursor-pointer"
                   title="Print this bill directly"
@@ -2667,9 +2660,6 @@ export const StoredBillsDirectory: React.FC<StoredBillsDirectoryProps> = ({
                     const b = selectedBill;
                     setSelectedBill(null);
                     setBillToPrint(b);
-                    setTimeout(() => {
-                      triggerAutoConfiguredPrint('bill');
-                    }, 80);
                   }}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3.5 py-2 rounded-xl font-bold flex items-center space-x-1.5 shadow-sm transition-colors cursor-pointer"
                   title="Print this bill directly"
@@ -2906,6 +2896,8 @@ export const StoredBillsDirectory: React.FC<StoredBillsDirectoryProps> = ({
             setBillToPrint(null);
           }}
           branches={branches}
+          autoPrintOnOpen={Boolean(billToPrint && !previewingBill)}
+          initialPadHeaderMode={padHeaderMode}
           bill={previewingBill || billToPrint}
         />
       )}

@@ -47,6 +47,7 @@ import { ColorQuantityModal, ColorBreakdownData } from './ColorQuantityModal';
 import { isColorApplicableCable, getCategoryBadgeStyle, getAllCategories } from '../utils/categoryHelper';
 import { groupItemsByCategoryOrder } from '../utils/searchHelper';
 import { triggerAutoConfiguredPrint, getSavedPrinterConfig } from '../utils/printerAutoConfig';
+import { useAutoPrintOnOpen } from '../hooks/useAutoPrintOnOpen';
 import { PolyCablesBanner } from './PolyCablesBanner';
 import { MnemonicLabel } from './MnemonicLabel';
 import { SalesCenterSearchFilter } from './SalesCenterSearchFilter';
@@ -715,6 +716,12 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
     rowIndex?: number;
   }>({});
 
+  useAutoPrintOnOpen(
+    Boolean(previewingChallan),
+    () => triggerAutoConfiguredPrint(challanPadHeaderMode === 'slip_pad' ? 'slip_pad' : 'challan'),
+    () => setPreviewingChallan(null)
+  );
+
   // Handle keyboard shortcuts when Print Preview Modal is active (Enter -> Print Now, Alt+A -> Auto-Config, Esc -> Close)
   useEffect(() => {
     if (!previewingChallan) return;
@@ -1028,9 +1035,19 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
 
   // Party Selection Handler
   const handleSelectParty = (p: Party) => {
+    const partyBranch =
+      effectiveBranches.find(
+        (branch) =>
+          branch.id === selectedBranchId &&
+          partyMatchesBranch(p, branch.id, effectiveBranches, salespersons)
+      ) ||
+      effectiveBranches.find((branch) =>
+        partyMatchesBranch(p, branch.id, effectiveBranches, salespersons)
+      );
     setPartyName(p.name);
     setPartyAddress(p.address || '');
     setPartyPhone(p.phone || '');
+    if (partyBranch) setSelectedBranchId(partyBranch.id);
     if (p.salesmanCode) {
       setSalesmanCode(p.salesmanCode);
       const sp = salespersons.find((s) => s.code.toLowerCase() === p.salesmanCode?.toLowerCase());
@@ -1428,10 +1445,7 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
 
     if (autoPreviewForPrint) {
       setPreviewingChallan(newChallanRecord);
-      showToast(`Challan ${newChallanRecord.challanNo} saved! Opening print preview...`, 'success');
-      setTimeout(() => {
-        triggerAutoConfiguredPrint(challanPadHeaderMode === 'slip_pad' ? 'slip_pad' : 'challan');
-      }, 400);
+      showToast(`Challan ${newChallanRecord.challanNo} saved! Sending to printer...`, 'success');
     } else if (keepInCreateMode) {
       setActiveSubTab('create_challan');
       setTimeout(() => {
@@ -3264,7 +3278,6 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
                                         setQuickPrintMenuChallanId(null);
                                         setChallanPadHeaderMode('plain');
                                         setPreviewingChallan(ch);
-                                        setTimeout(() => triggerAutoConfiguredPrint('challan'), 150);
                                       }}
                                       className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-cyan-500/10 transition-colors flex items-start space-x-2 text-white group cursor-pointer"
                                     >
@@ -3280,7 +3293,6 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
                                         setQuickPrintMenuChallanId(null);
                                         setChallanPadHeaderMode('hide_logo');
                                         setPreviewingChallan(ch);
-                                        setTimeout(() => triggerAutoConfiguredPrint('challan'), 150);
                                       }}
                                       className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-cyan-500/10 transition-colors flex items-start space-x-2 text-white group cursor-pointer"
                                     >
@@ -3296,7 +3308,6 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
                                         setQuickPrintMenuChallanId(null);
                                         setChallanPadHeaderMode('hide_all');
                                         setPreviewingChallan(ch);
-                                        setTimeout(() => triggerAutoConfiguredPrint('challan'), 150);
                                       }}
                                       className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-cyan-500/10 transition-colors flex items-start space-x-2 text-white group cursor-pointer"
                                     >

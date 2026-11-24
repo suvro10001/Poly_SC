@@ -23,7 +23,8 @@ import {
   getUserLoginFilters,
   isFactoryUser,
   isUnwantedSalesCenter,
-  getBranchAddressDetails
+  getBranchAddressDetails,
+  partyMatchesBranch
 } from '../utils/branchAccess';
 import { convertToTakaWords } from '../utils/numberToWords';
 import { resolvePartyAndMarketing } from '../utils/partyAndMarketingResolver';
@@ -33,6 +34,7 @@ import { ExpenseAmountTab } from './ExpenseAmountTab';
 import { DateInputWithPicker } from './DateInputWithPicker';
 import { SalesCenterSearchFilter, SalesCenterOption } from './SalesCenterSearchFilter';
 import { PolyCablesLogo } from './PolyCablesLogo';
+import { useAutoPrintOnOpen } from '../hooks/useAutoPrintOnOpen';
 import { checkCanTakeEntry } from '../utils/cloudConnection';
 import { recordDeletedEntityId, recordDeletedEntityIds, getGlobalDeletedIds, isGloballyDeletedId, getClientSyncId } from '../utils/deletedTracker';
 import {
@@ -546,6 +548,7 @@ interface SearchableComboboxProps {
   onEditItem?: (oldItem: string, newItem: string) => void;
   onOpenManager?: () => void;
   onAdvance?: () => void;
+  onRetreat?: () => void;
   inputRef?: React.RefObject<HTMLInputElement>;
   hideInputBadge?: boolean;
 }
@@ -612,6 +615,7 @@ function SearchableCombobox({
   onEditItem,
   onOpenManager,
   onAdvance,
+  onRetreat,
   inputRef: externalInputRef,
   hideInputBadge = false
 }: SearchableComboboxProps) {
@@ -840,7 +844,11 @@ function SearchableCombobox({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (e.key === 'ArrowLeft' && onRetreat) {
+        e.preventDefault();
+        e.stopPropagation();
+        onRetreat();
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         setHasTypedFilter(false);
         setHighlightedIndex(0);
         updateDropdownPosition();
@@ -4730,11 +4738,30 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
 
   const isUserSalesCenterFixed = Boolean(userFixedSalesCenter);
 
+  const collectionEntryParties = useMemo(() => {
+    if (!isUserSalesCenterFixed || !userFixedSalesCenter) return parties || [];
+    const fixedBranch = effectiveAllBranches.find(
+      (branch) =>
+        cleanSalesCenterName(branch.name).toLowerCase() ===
+        cleanSalesCenterName(userFixedSalesCenter).toLowerCase()
+    );
+    const targetBranch = fixedBranch?.id || userFixedSalesCenter;
+    return (parties || []).filter((party) =>
+      partyMatchesBranch(party, targetBranch, effectiveAllBranches, effectiveAllSalespersons)
+    );
+  }, [
+    parties,
+    isUserSalesCenterFixed,
+    userFixedSalesCenter,
+    effectiveAllBranches,
+    effectiveAllSalespersons
+  ]);
+
   // Resolve a party's assigned Sales Center by party name
-  const resolvePartySalesCenter = (partyNameVal: string): string => {
+  const resolvePartySalesCenter = (partyNameVal: string, selectedParty?: Party): string => {
     const cleanP = cleanSelectedPartyName(partyNameVal || '').trim().toLowerCase();
     if (!cleanP) return '';
-    const matchedParty = (parties || []).find(
+    const matchedParty = selectedParty || (parties || []).find(
       (p) => p.name.trim().toLowerCase() === cleanP || p.name.trim().toLowerCase() === (partyNameVal || '').trim().toLowerCase()
     );
     if (!matchedParty) return '';
@@ -4816,7 +4843,12 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
     setMrPartyRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
   };
 
-  const handleUpdateMrPartyRow = (id: string, field: keyof PartyCollectionEntryRow, value: string) => {
+  const handleUpdateMrPartyRow = (
+    id: string,
+    field: keyof PartyCollectionEntryRow,
+    value: string,
+    selectedParty?: Party
+  ) => {
     const finalVal = field === 'partyName' ? cleanSelectedPartyName(value) : value;
     const next = mrPartyRows.map((r) => (r.id === id ? { ...r, [field]: finalVal } : r));
     setMrPartyRows(next);
@@ -4826,7 +4858,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
       } else {
         // Party-wise Sales Center auto-fixed based on matched party (row 0 or active edited row)
         const targetPartyName = finalVal.trim() ? finalVal : (next[0]?.partyName || '');
-        const partyCenter = resolvePartySalesCenter(targetPartyName);
+        const partyCenter = resolvePartySalesCenter(targetPartyName, selectedParty);
         if (partyCenter) {
           setMrEntity(partyCenter);
           setMrPartyFixedBranch(partyCenter);
@@ -4955,16 +4987,16 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
 
   const filteredMrParties = React.useMemo(() => {
     if (isShowingAllMrParties || !mrPartySearchQuery.trim()) {
-      return parties || [];
+      return collectionEntryParties;
     }
     const q = mrPartySearchQuery.toLowerCase().trim();
-    return (parties || []).filter(
+    return collectionEntryParties.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         (p.address && p.address.toLowerCase().includes(q)) ||
         (p.mobile && p.mobile.toLowerCase().includes(q))
     );
-  }, [parties, mrPartySearchQuery, isShowingAllMrParties]);
+  }, [collectionEntryParties, mrPartySearchQuery, isShowingAllMrParties]);
 
   // Dynamic Party Filter States
   const [filterParty, setFilterParty] = useState<string>('All');
@@ -5150,8 +5182,8 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
   // Party Selection Handler with Auto-Select for Assigned Account / Person
   const handlePartySelect = (selectedName: string) => {
     setMrPartyName(selectedName);
-    if (selectedName && selectedName !== 'Custom...' && parties) {
-      const partyMatches = parties.filter(
+    if (selectedName && selectedName !== 'Custom...' && collectionEntryParties.length > 0) {
+      const partyMatches = collectionEntryParties.filter(
         (p) => p.name.trim().toLowerCase() === selectedName.trim().toLowerCase()
       );
       const matchedParty =
@@ -9362,6 +9394,16 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
   const handlePrintReport = () => {
     setShowReportPrintPreviewModal(true);
   };
+  useAutoPrintOnOpen(
+    showReportPrintPreviewModal,
+    () => triggerAutoConfiguredPrint('report', { paperPreset: 'a4' }),
+    () => setShowReportPrintPreviewModal(false)
+  );
+  useAutoPrintOnOpen(
+    showDirectoryPrintPreviewModal,
+    () => triggerAutoConfiguredPrint('report', { paperPreset: 'a4' }),
+    () => setShowDirectoryPrintPreviewModal(false)
+  );
 
   // Render Party Filter Box with explicit Back / Close system (supports dynamic search, keyboard navigation & dark theme)
   const PartyFilterControl = ({ dark = false }: { dark?: boolean }) => {
@@ -10679,7 +10721,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
 
               {/* Datalist for party autocomplete */}
               <datalist id="party-collection-options">
-                {parties.map((p) => (
+                {collectionEntryParties.map((p) => (
                   <option key={p.id} value={p.name}>
                     {p.address ? `${p.name} — ${p.address}` : p.name}
                   </option>
@@ -10706,7 +10748,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
 
                 {mrPartyRows.map((row, idx) => {
                   const cleanRowName = cleanSelectedPartyName(row.partyName);
-                  const matchedParty = parties.find(
+                  const matchedParty = collectionEntryParties.find(
                     (p) =>
                       p.name.trim().toLowerCase() === cleanRowName.trim().toLowerCase() ||
                       p.name.trim().toLowerCase() === row.partyName.trim().toLowerCase()
@@ -10714,8 +10756,8 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                   const rowQuery = row.partyName.trim().toLowerCase();
                   const rowFilteredParties = (
                     !rowQuery
-                      ? parties
-                      : parties.filter(
+                      ? collectionEntryParties
+                      : collectionEntryParties.filter(
                           (p) =>
                             (p.name || '').toLowerCase().includes(rowQuery) ||
                             (p.address || '').toLowerCase().includes(rowQuery) ||
@@ -10792,7 +10834,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                                     if (isRowDropdownOpen && rowFilteredParties.length > 0) {
                                       const chosen = rowFilteredParties[mrRowPartyHighlightIdx] || rowFilteredParties[0];
                                       if (chosen) {
-                                        handleUpdateMrPartyRow(row.id, 'partyName', chosen.name);
+                                        handleUpdateMrPartyRow(row.id, 'partyName', chosen.name, chosen);
                                       }
                                     }
                                     setActiveMrRowPartyIdx(null);
@@ -10835,7 +10877,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                                       data-mr-party-highlighted={isHighlighted}
                                       onMouseDown={(e) => {
                                         e.preventDefault();
-                                        handleUpdateMrPartyRow(row.id, 'partyName', p.name);
+                                        handleUpdateMrPartyRow(row.id, 'partyName', p.name, p);
                                         setActiveMrRowPartyIdx(null);
                                         setTimeout(() => {
                                           document.getElementById(`mr-amount-input-${idx}`)?.focus();
@@ -11152,7 +11194,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                           } else if (e.key === 'Enter') {
                             e.preventDefault();
                             setMrPaymentType('cheque');
-                            document.getElementById('mr-save-submit-btn')?.focus();
+                            setTimeout(() => mrBankInputRef.current?.focus(), 20);
                           }
                         }}
                         className={`py-1.5 px-3 rounded-md text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
@@ -11216,6 +11258,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                         entityLabel="Bank"
                         inputRef={mrBankInputRef}
                         onAdvance={() => mrChequeNoInputRef.current?.focus()}
+                        onRetreat={() => mrChequeBtnRef.current?.focus()}
                         onAddNew={(newBank) => {
                           handleAddBank(newBank);
                           setMrBankName(newBank);
@@ -11236,7 +11279,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
 
                       <div>
                         <label className="text-[11px] font-bold text-slate-300 block mb-1">
-                          Default Cheque No:
+                          Cheque No:
                         </label>
                         <input
                           ref={mrChequeNoInputRef}
@@ -11247,6 +11290,9 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                             if (e.key === 'Enter') {
                               e.preventDefault();
                               mrPassDateInputRef.current?.focus();
+                            } else if (e.key === 'ArrowLeft') {
+                              e.preventDefault();
+                              mrBankInputRef.current?.focus();
                             }
                           }}
                           placeholder="e.g. CQ-908234"
@@ -11271,6 +11317,9 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                                   setMrPassDate(formatDateDDMMYY(mrPassDate) || mrPassDate);
                                 }
                                 document.getElementById('mr-save-submit-btn')?.focus();
+                              } else if (e.key === 'ArrowLeft') {
+                                e.preventDefault();
+                                mrChequeNoInputRef.current?.focus();
                               }
                             }}
                             onBlur={() => {
@@ -11340,6 +11389,9 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       handleSaveCollection();
+                    } else if (e.key === 'ArrowLeft' && mrPaymentType === 'cheque') {
+                      e.preventDefault();
+                      mrPassDateInputRef.current?.focus();
                     }
                   }}
                   className="px-5 py-2.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 text-xs font-black rounded-xl shadow-[0_0_20px_rgba(34,211,238,0.3)] cursor-pointer flex items-center justify-center space-x-1.5 transition-all active:scale-95 shrink-0"
@@ -13342,6 +13394,15 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                           </div>
                         </div>
 
+                        <div className="space-y-0.5 text-[11px] leading-tight">
+                          <div className="break-words text-white" title={fullBank}>
+                            <span className="font-semibold text-slate-400">Bank: </span>{fullBank}
+                          </div>
+                          <div className="break-words text-cyan-200" title={fullAccount}>
+                            <span className="font-semibold text-slate-400">Account: </span>{fullAccount}
+                          </div>
+                        </div>
+
                         {/* Party & Details */}
                         <div>
                           {isMulti ? (
@@ -13517,7 +13578,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                     {renderDepositSortHeader('Party Name', 'customer', 'left', 'min-w-[130px]')}
                     {renderDepositSortHeader('Address', 'address', 'left', 'w-24 whitespace-nowrap')}
                     {renderDepositSortHeader('Marketing Officer', 'officer', 'left', 'w-28 whitespace-nowrap')}
-                    {renderDepositSortHeader('Target Bank & Account', 'tag', 'left', 'w-36 whitespace-nowrap')}
+                    {renderDepositSortHeader('Target Bank & Account', 'tag', 'left', 'min-w-[180px]')}
                     {renderDepositSortHeader('Deposite Date', 'depositeDate', 'left', 'w-24 whitespace-nowrap')}
                     {renderDepositSortHeader('Amount (Tk)', 'amount', 'right', 'w-28 bg-[#0e2d42] text-cyan-200 whitespace-nowrap')}
                     {renderDepositSortHeader('Remarks', 'remarks', 'left', 'w-20 max-w-[80px]')}
@@ -13595,17 +13656,19 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                               );
                             })()}
                           </td>
-                          <td className="py-1 px-1.5 text-left whitespace-nowrap">
+                          <td className="py-1 px-1.5 text-left">
                             {(() => {
                               const isHo = isHoDeposit(dep);
                               const resolvedBank = isHo ? 'Head Office (H/O)' : (resolveFullBankName(dep.bankName || dep.targetBankName || dep.displayTag || dep.depositBankTag, bankList) || 'Pubali Bank PLC');
                               const resolvedAccount = isHo ? 'Head Office' : (resolveFullAccountName(dep.accountName || dep.depositBankTag || dep.accountShortTag || dep.displayTag, accountList) || 'Padma Enterprise');
                               const shortTag = isHo ? 'H/O' : getBankAndAccountShortTag(resolvedBank, resolvedAccount, dep.displayTag || dep.depositBankTag);
                               return (
-                                <div className="inline-flex items-center space-x-2 py-1 px-2 rounded-lg bg-[#061520] border border-cyan-500/30 text-white select-none">
+                                <div className="inline-flex items-center gap-2 py-1 px-2 rounded-lg bg-[#061520] border border-cyan-500/30 text-white select-none">
                                   <BankLogoBadge bankName={isHo ? 'H/O' : resolvedBank} size="md" />
-                                  <div className="flex flex-col leading-tight">
-                                    <span className="font-mono font-bold text-cyan-300 text-[10px]">{shortTag}</span>
+                                  <div className="min-w-0 max-w-[180px] space-y-0.5 leading-tight">
+                                    <span className="block font-mono font-bold text-cyan-300 text-[10px]">{shortTag}</span>
+                                    <span className="block break-words text-[10px] text-white" title={resolvedBank}>{resolvedBank}</span>
+                                    <span className="block break-words text-[10px] text-cyan-200" title={resolvedAccount}>A/C: {resolvedAccount}</span>
                                   </div>
                                 </div>
                               );

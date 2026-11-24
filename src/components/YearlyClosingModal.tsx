@@ -15,6 +15,7 @@ import {
 import { formatDateDDMMYY, parseDateToISO, getTodayDDMMYY } from '../utils/dateUtils';
 import { DateInputWithPicker } from './DateInputWithPicker';
 import { BankLogoBadge } from './BankAndAccountDirectory';
+import { useAutoPrintOnOpen } from '../hooks/useAutoPrintOnOpen';
 import * as XLSX from 'xlsx';
 import {
   Lock,
@@ -541,6 +542,12 @@ export const YearlyClosingModal: React.FC<YearlyClosingModalProps> = ({
   const [editingClosing, setEditingClosing] = useState<FinancialYearClosing | null>(null);
   const [viewingClosingStatement, setViewingClosingStatement] = useState<FinancialYearClosing | null>(null);
   const [showHistoryPrintPreview, setShowHistoryPrintPreview] = useState<boolean>(false);
+  useAutoPrintOnOpen(showPrintPreview, () => window.print(), () => setShowPrintPreview(false));
+  useAutoPrintOnOpen(
+    showHistoryPrintPreview && Boolean(viewingClosingStatement),
+    () => window.print(),
+    () => setShowHistoryPrintPreview(false)
+  );
 
   // History Statement Reconstructed Items
   const historyStatementItems = useMemo(() => {

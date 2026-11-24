@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { SalesCenterSearchFilter } from './SalesCenterSearchFilter';
 import { parseDateToISO, formatDateDDMMYY } from '../utils/dateUtils';
+import { useAutoPrintOnOpen } from '../hooks/useAutoPrintOnOpen';
 import { sortItemsCategorySerialWise, matchesFlexibleSearch, getCategorySerialRank } from '../utils/searchHelper';
 import { getAllCategories, isColorApplicableCable } from '../utils/categoryHelper';
 import {
@@ -1049,6 +1050,11 @@ export const AISalesForecastModal: React.FC<AISalesForecastModalProps> = ({
   const handlePrint = () => {
     setShowPrintPreviewModal(true);
   };
+  useAutoPrintOnOpen(
+    showPrintPreviewModal,
+    () => window.print(),
+    () => setShowPrintPreviewModal(false)
+  );
 
   if (!isOpen) return null;
 

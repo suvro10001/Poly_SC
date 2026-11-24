@@ -11,6 +11,7 @@ import { SlipPadPrintPreviewSettings } from './SlipPadPrintPreviewSettings';
 import { PrinterAutoConfigModal } from './PrinterAutoConfigModal';
 import { triggerAutoConfiguredPrint } from '../utils/printerAutoConfig';
 import { stripBranchPrefixForPrint, DEFAULT_HEAD_OFFICE_BRANCH, findHeadOfficeBranch } from '../utils/salesCenterHelper';
+import { useAutoPrintOnOpen } from '../hooks/useAutoPrintOnOpen';
 
 export interface BillPrintPreviewModalProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ export interface BillPrintPreviewModalProps {
   company?: CompanyDetails;
   branches?: BranchLocation[];
   initialDocumentType?: 'bill' | 'challan';
+  autoPrintOnOpen?: boolean;
+  initialPadHeaderMode?: 'plain' | 'hide_logo' | 'hide_all';
   bill: {
     id?: string;
     header: BillHeader;
@@ -40,6 +43,8 @@ export const BillPrintPreviewModal: React.FC<BillPrintPreviewModalProps> = ({
   company: propCompany,
   branches: propBranches,
   initialDocumentType = 'bill',
+  autoPrintOnOpen = false,
+  initialPadHeaderMode = 'plain',
   bill
 }) => {
   if (!isOpen || !bill) return null;
@@ -175,7 +180,7 @@ export const BillPrintPreviewModal: React.FC<BillPrintPreviewModalProps> = ({
     }
   });
 
-  const [padHeaderMode, setPadHeaderMode] = useState<'plain' | 'hide_logo' | 'hide_all'>('plain');
+  const [padHeaderMode, setPadHeaderMode] = useState<'plain' | 'hide_logo' | 'hide_all'>(initialPadHeaderMode);
   const [previewZoom, setPreviewZoom] = useState<'80%' | '100%' | '115%'>('100%');
   const [showSlipPadSettingsInPreview, setShowSlipPadSettingsInPreview] = useState(false);
   const [showPrinterAutoConfigModal, setShowPrinterAutoConfigModal] = useState(false);
@@ -359,6 +364,8 @@ export const BillPrintPreviewModal: React.FC<BillPrintPreviewModalProps> = ({
       triggerAutoConfiguredPrint(docType === 'challan' ? 'challan' : 'bill');
     }
   };
+
+  useAutoPrintOnOpen(autoPrintOnOpen && isOpen, handlePrint, autoPrintOnOpen ? onClose : undefined);
 
   // Keyboard shortcut listener
   useEffect(() => {

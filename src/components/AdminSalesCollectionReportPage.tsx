@@ -2722,7 +2722,7 @@ export const AdminSalesCollectionReportPage: React.FC<AdminSalesCollectionReport
           >
             <Crown className={`w-3.5 h-3.5 ${activeTab === 'admin_wise' ? 'text-slate-950' : 'text-amber-300'}`} />
             <span>Admin-Wise Sales &amp; Collection ({adminClusterPerformanceList.length})</span>
-            <span className={`text-[9px] px-1.5 py-0.2 rounded font-black uppercase tracking-wider ${activeTab === 'admin_wise' ? 'bg-slate-950/20 text-slate-950' : 'bg-amber-500/20 text-amber-200'}`}>Super Admin</span>
+            <span className={`text-[9px] px-1.5 py-0.2 rounded font-black uppercase tracking-wider ${activeTab === 'admin_wise' ? 'bg-slate-950/20 text-slate-950' : 'bg-amber-500/20 text-amber-200'}`}>By Admin</span>
           </button>
         )}
 
@@ -2762,7 +2762,7 @@ export const AdminSalesCollectionReportPage: React.FC<AdminSalesCollectionReport
           }`}
         >
           <Layers className={`w-3.5 h-3.5 ${activeTab === 'party_wise' ? 'text-slate-950' : 'text-emerald-300'}`} />
-          <span>Party-Wise Summary ({partyWiseList.length})</span>
+          <span>By Party ({partyWiseList.length})</span>
         </button>
 
         <button

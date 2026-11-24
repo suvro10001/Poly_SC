@@ -7,6 +7,7 @@ import { matchesFlexibleSearch, groupItemsByCategoryOrder, getCategorySerialRank
 import { getAllCategories } from '../utils/categoryHelper';
 import { getActivePriceCircularInfo } from '../utils/priceCircularHelper';
 import { getItemOpeningStock, getItemFactoryImportQty } from '../utils/stockHelper';
+import { useAutoPrintOnOpen } from '../hooks/useAutoPrintOnOpen';
 
 interface ItemPricePrintPreviewModalProps {
   isOpen: boolean;
@@ -153,6 +154,8 @@ export const ItemPricePrintPreviewModal: React.FC<ItemPricePrintPreviewModalProp
   const handlePrint = () => {
     window.print();
   };
+
+  useAutoPrintOnOpen(isOpen, handlePrint, onClose);
 
   if (!isOpen) return null;
 

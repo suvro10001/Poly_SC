@@ -4,6 +4,7 @@ import { defaultBranches } from '../data/defaultData';
 import { X, Printer, Search, Building2, Lock } from 'lucide-react';
 import { formatDateDDMMYY } from '../utils/dateUtils';
 import { getBranchHeaderAddress } from '../utils/branchAddressHelper';
+import { useAutoPrintOnOpen } from '../hooks/useAutoPrintOnOpen';
 
 interface FactoryImportHistoryPrintPreviewModalProps {
   isOpen: boolean;
@@ -90,6 +91,8 @@ export const FactoryImportHistoryPrintPreviewModal: React.FC<FactoryImportHistor
   }, [filteredChallans]);
 
   const currentDateFormatted = formatDateDDMMYY(new Date().toISOString().split('T')[0]);
+
+  useAutoPrintOnOpen(isOpen, () => window.print(), onClose);
 
   if (!isOpen) return null;
 

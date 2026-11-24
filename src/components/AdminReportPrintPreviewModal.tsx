@@ -18,6 +18,7 @@ import { CompanyDetails, Party } from '../types';
 import { formatDateDDMMYY } from '../utils/dateUtils';
 import { cleanBranchName } from '../utils/branchAccess';
 import { PolyCablesLogo } from './PolyCablesLogo';
+import { useAutoPrintOnOpen } from '../hooks/useAutoPrintOnOpen';
 
 export interface AdminReportPrintPreviewModalProps {
   isOpen: boolean;
@@ -202,6 +203,8 @@ export const AdminReportPrintPreviewModal: React.FC<AdminReportPrintPreviewModal
   React.useEffect(() => {
     setCurrentTab(initialTab);
   }, [initialTab]);
+
+  useAutoPrintOnOpen(isOpen, () => window.print(), onClose);
 
   if (!isOpen) return null;
 

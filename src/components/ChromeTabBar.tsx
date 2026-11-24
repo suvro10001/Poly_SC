@@ -237,7 +237,7 @@ export const ChromeTabBar: React.FC<ChromeTabBarProps> = ({
   const visibleTabs = tabs.filter((t) => t.viewTab !== 'report_dashboard');
 
   return (
-    <div className="bg-[#071924]/45 backdrop-blur-xl border-b border-white/[0.10] flex items-center px-2.5 pt-1 select-none min-h-[38px] no-print">
+    <div className="bg-[#071924]/45 backdrop-blur-xl border-b border-white/[0.10] flex items-center px-2.5 pt-1 select-none min-h-[38px] no-print cyber-glass-header">
       {/* Back Button: opens previous page where user was */}
       {onBack && (
         <button

@@ -29,6 +29,7 @@ import { formatDateDDMMYY, parseDateToISO, getTodayISO, getTodayDDMMYY } from '.
 import { convertToTakaWords } from '../utils/numberToWords';
 import { formatDisplayUnit, getItemLiveStock } from '../utils/stockHelper';
 import { triggerAutoConfiguredPrint } from '../utils/printerAutoConfig';
+import { useAutoPrintOnOpen } from '../hooks/useAutoPrintOnOpen';
 import { QuickAddItemModal } from './QuickAddItemModal';
 import { ColorQuantityModal, ColorBreakdownData } from './ColorQuantityModal';
 import { PolyCablesBanner } from './PolyCablesBanner';
@@ -435,6 +436,11 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
   const [printZoom, setPrintZoom] = useState<'80%' | '100%' | '115%'>('100%');
   const [printFormat, setPrintFormat] = useState<'pad' | 'slip_pad'>('pad');
   const [showPrinterConfigModal, setShowPrinterConfigModal] = useState(false);
+  useAutoPrintOnOpen(
+    showPrintModal && Boolean(printPreviewReturn),
+    () => triggerAutoConfiguredPrint(printFormat === 'slip_pad' ? 'slip_pad' : 'bill'),
+    () => setShowPrintModal(false)
+  );
 
   const activeReturnBranch = useMemo(() => {
     const targetBranchId = printPreviewReturn?.branchId;

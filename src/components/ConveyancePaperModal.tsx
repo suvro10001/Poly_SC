@@ -4,6 +4,7 @@ import { PolyCablesEmblem } from './PolyCablesLogo';
 import { formatDateDDMMYY } from '../utils/dateUtils';
 import { convertToTakaWords } from '../utils/numberToWords';
 import { Printer, X, Download, RotateCcw, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { useAutoPrintOnOpen } from '../hooks/useAutoPrintOnOpen';
 
 interface ConveyancePaperModalProps {
   isOpen: boolean;
@@ -20,6 +21,8 @@ export const ConveyancePaperModal: React.FC<ConveyancePaperModalProps> = ({
 }) => {
   const [isBlankMode, setIsBlankMode] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+
+  useAutoPrintOnOpen(isOpen, () => window.print(), onClose);
 
   if (!isOpen) return null;
 

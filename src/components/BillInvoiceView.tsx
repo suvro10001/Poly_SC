@@ -775,13 +775,25 @@ export const BillInvoiceView: React.FC<BillInvoiceViewProps> = ({
 
   // Handle party selection
   const handleSelectParty = (p: Party) => {
+    const partyBranch =
+      allowedBranches.find(
+        (branch) =>
+          branch.id === header.branchId &&
+          partyMatchesBranch(p, branch.id, allowedBranches, salespersons)
+      ) ||
+      allowedBranches.find((branch) =>
+        partyMatchesBranch(p, branch.id, allowedBranches, salespersons)
+      );
     setHeader((prev) => ({
       ...prev,
       partyName: p.name,
       address: p.address || prev.address || '',
       phone: p.phone || prev.phone || '',
       salesmanCode: p.salesmanCode || prev.salesmanCode || '',
-      salespersonName: p.salespersonName || prev.salespersonName || ''
+      salespersonName: p.salespersonName || prev.salespersonName || '',
+      ...(partyBranch
+        ? { branchId: partyBranch.id, branchName: partyBranch.name }
+        : {})
     }));
     setPartySearchOpen(false);
     setPartySearchText('');
@@ -3116,6 +3128,7 @@ export const BillInvoiceView: React.FC<BillInvoiceViewProps> = ({
           company={company}
           branches={allowedBranches}
           initialDocumentType={printDocType}
+          autoPrintOnOpen
           bill={{
             header: {
               ...header,

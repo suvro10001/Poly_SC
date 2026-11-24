@@ -33,6 +33,7 @@ import { BankLogoBadge, getBankAndAccountShortTag, resolveFullBankName, resolveF
 
 import { recordDeletedEntityId, getGlobalDeletedIds, getClientSyncId } from '../utils/deletedTracker';
 import { isSameSalesCenterForDepositMatch, matchesMrTokenExact } from '../utils/mrNumberHelper';
+import { useAutoPrintOnOpen } from '../hooks/useAutoPrintOnOpen';
 import { StandardPeriodFilterBar } from './StandardPeriodFilterBar';
 import { StandardPeriodPreset, calculatePeriodDates } from '../utils/standardPeriodHelper';
 
@@ -2830,6 +2831,11 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
   const handlePrint = () => {
     setShowPrintPreviewModal(true);
   };
+  useAutoPrintOnOpen(
+    showPrintPreviewModal,
+    () => window.print(),
+    () => setShowPrintPreviewModal(false)
+  );
 
   // Single Selected Party for Year-End Closing
   const singleSelectedParty = useMemo(() => {

@@ -26,6 +26,7 @@ import { matchesFlexibleSearch, sortItemsCategorySerialWise, groupItemsByCategor
 import { defaultItems, defaultBranches } from '../data/defaultData';
 import { getItemOpeningStock, isItemActiveInBranch } from '../utils/stockHelper';
 import { StockColorBreakdownModal, StockCategoryType } from './StockColorBreakdownModal';
+import { useAutoPrintOnOpen } from '../hooks/useAutoPrintOnOpen';
 import {
   Calendar,
   Download,
@@ -415,6 +416,11 @@ export const SalesReportView: React.FC<SalesReportViewProps> = ({
   const [specialItemFilter, setSpecialItemFilter] = useState<'without_special' | 'with_special' | 'special_only'>('with_special');
   const [showPrintPreviewModal, setShowPrintPreviewModal] = useState<boolean>(false);
   const [previewZoom, setPreviewZoom] = useState<'80%' | '100%' | '115%'>('100%');
+  useAutoPrintOnOpen(
+    showPrintPreviewModal,
+    () => window.print(),
+    () => setShowPrintPreviewModal(false)
+  );
 
 
   const filteredSalespersonsForDropdown = useMemo(() => {

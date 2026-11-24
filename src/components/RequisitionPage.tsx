@@ -84,7 +84,8 @@ import {
   isAccountsAdmin,
   isAnyAdmin,
   filterBranchesForUser,
-  filterSalespersonsByBranch
+  filterSalespersonsByBranch,
+  partyMatchesBranch
 } from '../utils/branchAccess';
 import { jsPDF } from 'jspdf';
 import { EmailSenderModal } from './EmailSenderModal';
@@ -2323,6 +2324,21 @@ export const RequisitionPage: React.FC<RequisitionPageProps> = ({
         !b.name.toLowerCase().includes('billing portal')
     );
   }, [branches]);
+
+  const requisitionPartyLoginScope = useMemo(
+    () => getUserLoginFilters(currentUser, salespersons, activeBranches),
+    [currentUser, salespersons, activeBranches]
+  );
+  const requisitionPartyScopeBranch =
+    requisitionPartyLoginScope.isRestricted &&
+    requisitionPartyLoginScope.branchId &&
+    !['all', 'all sales centers'].includes(requisitionPartyLoginScope.branchId.toLowerCase().trim())
+      ? requisitionPartyLoginScope.branchId
+      : requisitionPartyLoginScope.isRestricted &&
+          requisitionPartyLoginScope.branchName &&
+          !['all', 'all sales centers'].includes(requisitionPartyLoginScope.branchName.toLowerCase().trim())
+        ? requisitionPartyLoginScope.branchName
+        : null;
 
   const initialSalesCenter = useMemo(() => {
     const init = getUserLoginFilters(currentUser, salespersons, activeBranches);
@@ -4645,10 +4661,47 @@ export const RequisitionPage: React.FC<RequisitionPageProps> = ({
 
   // Combined party list with sales centers
   const allPartiesWithSalesCenters = useMemo(() => {
-    const lowerPartyNames = new Set(parties.map((p) => p.name.trim().toLowerCase()));
-    const validSC = salesCenterParties.filter((sc) => !lowerPartyNames.has(sc.name.trim().toLowerCase()));
-    return [...salesCenterParties, ...parties.filter((p) => !salesCenterParties.some(sc => sc.name.trim().toLowerCase() === p.name.trim().toLowerCase()))];
-  }, [parties, salesCenterParties]);
+    const scopedParties = requisitionPartyScopeBranch
+      ? parties.filter((party) =>
+          partyMatchesBranch(
+            party,
+            requisitionPartyScopeBranch,
+            activeBranches,
+            salespersons
+          )
+        )
+      : parties;
+    const scopedSalesCenters = requisitionPartyScopeBranch
+      ? salesCenterParties.filter((party) =>
+          partyMatchesBranch(
+            party,
+            requisitionPartyScopeBranch,
+            activeBranches,
+            salespersons
+          )
+        )
+      : salesCenterParties;
+    return [
+      ...scopedSalesCenters.filter(
+        (center) =>
+          !scopedParties.some(
+            (party) => party.name.trim().toLowerCase() === center.name.trim().toLowerCase()
+          )
+      ),
+      ...scopedParties.filter(
+        (party) =>
+          !scopedSalesCenters.some(
+            (center) => center.name.trim().toLowerCase() === party.name.trim().toLowerCase()
+          )
+      )
+    ];
+  }, [
+    parties,
+    salesCenterParties,
+    requisitionPartyScopeBranch,
+    activeBranches,
+    salespersons
+  ]);
 
   // Filtered party list
   const filteredParties = useMemo(() => {

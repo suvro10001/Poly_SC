@@ -1173,14 +1173,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!restoreSuccessSummary) return;
-    const timer = window.setTimeout(() => {
-      setRestoreSuccessSummary(null);
-    }, 1000);
-    return () => window.clearTimeout(timer);
-  }, [restoreSuccessSummary]);
-
   // Single Item Backup & Restore States ("when backup and restore, can single item do it")
   const [singleBackupEntityType, setSingleBackupEntityType] = useState<'item' | 'bill' | 'party' | 'module'>('item');
   const [selectedSingleItemId, setSelectedSingleItemId] = useState<string>('');

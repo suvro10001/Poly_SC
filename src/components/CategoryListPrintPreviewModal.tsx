@@ -4,6 +4,7 @@ import { defaultBranches } from '../data/defaultData';
 import { X, Printer, Search, Building2, Tag } from 'lucide-react';
 import { formatDateDDMMYY } from '../utils/dateUtils';
 import { getItemOpeningStock, getItemFactoryImportQty } from '../utils/stockHelper';
+import { useAutoPrintOnOpen } from '../hooks/useAutoPrintOnOpen';
 
 interface CategoryListPrintPreviewModalProps {
   isOpen: boolean;
@@ -110,6 +111,8 @@ export const CategoryListPrintPreviewModal: React.FC<CategoryListPrintPreviewMod
   const handlePrint = () => {
     window.print();
   };
+
+  useAutoPrintOnOpen(isOpen, handlePrint, onClose);
 
   if (!isOpen) return null;
 

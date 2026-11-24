@@ -4,11 +4,15 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { ChallanProvider } from './context/ChallanContext';
-import { installGlobalExcelPrintInterceptor } from './utils/excelPrintHelper';
-
-installGlobalExcelPrintInterceptor();
 
 if (typeof window !== 'undefined') {
+  const legacyNativePrint = (window as any).__polycablesNativePrint;
+  if (typeof legacyNativePrint === 'function') {
+    window.print = legacyNativePrint;
+    delete (window as any).__polycablesNativePrint;
+    delete (window as any).__polycablesExcelPrintInstalled;
+  }
+
   try {
     const origError = console.error;
     console.error = (...args: any[]) => {

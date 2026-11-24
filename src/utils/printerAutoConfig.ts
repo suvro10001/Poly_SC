@@ -6,8 +6,6 @@
  */
 
 
-import { exportHtmlStringToStyledExcel } from './excelPrintHelper';
-
 export interface PrinterConfigOptions {
   orientation?: 'portrait' | 'landscape';
   paperPreset?: 'auto' | 'pad_5.5x8.5' | 'bill_7.2x10' | 'a4' | 'letter';
@@ -385,13 +383,9 @@ export function triggerAutoConfiguredPrint(
 }
 
 /**
- * Clean isolated iframe printing utility.
- * Exports matching Excel file and injects only the requested HTML document into an isolated hidden iframe
- * and invokes its print dialog, ensuring zero bleeding or clutter from the main page.
+ * Prints only the requested HTML document from an isolated hidden iframe.
  */
 export function printHtmlViaIframe(title: string, bodyHtml: string): void {
-  void exportHtmlStringToStyledExcel(title, bodyHtml).catch(() => {});
-
   const existing = document.getElementById('polycables-print-iframe');
   if (existing) {
     existing.remove();
