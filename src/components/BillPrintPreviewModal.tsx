@@ -50,7 +50,9 @@ export const BillPrintPreviewModal: React.FC<BillPrintPreviewModalProps> = ({
   if (!isOpen || !bill) return null;
 
   const header = bill.header;
-  const lines = bill.lines || [];
+  const lines = (bill.lines || []).filter((line) =>
+    Boolean((line.itemDescription || line.itemName || '').trim()) || (Number(line.coilQty) || 0) > 0
+  );
   const company = bill.company || propCompany || {
     name: 'POLY CABLES',
     address: 'Holding No. 392, Shop No. 3, Sanjoy Smrity Market, Raypara, Madhupur, Tangail.',

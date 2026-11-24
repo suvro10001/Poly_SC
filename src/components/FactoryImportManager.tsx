@@ -285,6 +285,7 @@ export const FactoryImportManager: React.FC<FactoryImportManagerProps> = ({
   const itemSearchRefs = useRef<{ [lineId: string]: HTMLInputElement | null }>({});
   const qtyInputRefs = useRef<{ [lineId: string]: HTMLInputElement | null }>({});
   const dropdownOptionRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+  const addFactoryLineButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
@@ -439,17 +440,8 @@ export const FactoryImportManager: React.FC<FactoryImportManagerProps> = ({
     if (colors.others && Number(colors.others) > 0) colorParts.push(`O:${colors.others}`);
     const colorRemarksStr = colorParts.join(' ');
 
-    const currentIndex = lines.findIndex((l) => l.id === lineId);
-    let nextFocusLineId: string;
-    if (currentIndex >= 0 && currentIndex < lines.length - 1) {
-      nextFocusLineId = lines[currentIndex + 1].id;
-    } else {
-      nextFocusLineId = `line-${Date.now()}-${lines.length + 1}`;
-    }
-
     setLines((prev) => {
-      const isLast = prev.findIndex((l) => l.id === lineId) >= prev.length - 1;
-      const updated = prev.map((line) => {
+      return prev.map((line) => {
         if (line.id === lineId) {
           const rate = line.rate || (item as any)?.rate || 0;
           return {
@@ -467,38 +459,21 @@ export const FactoryImportManager: React.FC<FactoryImportManagerProps> = ({
         }
         return line;
       });
-
-      if (isLast) {
-        return [
-          ...updated,
-          {
-            id: nextFocusLineId,
-            itemId: '',
-            itemCode: '',
-            itemName: '',
-            sizeSpec: '',
-            unit: 'Coils',
-            category: '',
-            quantity: 0,
-            rate: 0,
-            amount: 0
-          }
-        ];
-      }
-
-      return updated;
     });
 
     setColorModalState(null);
 
-    // Auto focus and select next item line input
-    focusFactoryLineItemInput(nextFocusLineId);
+    const currentIndex = lines.findIndex((l) => l.id === lineId);
+    if (currentIndex >= 0 && currentIndex < lines.length - 1) {
+      focusFactoryLineItemInput(lines[currentIndex + 1].id);
+    } else {
+      addFactoryLineButtonRef.current?.focus();
+    }
   };
 
   const handleSelectFoundItem = (lineId: string, foundItem: Item) => {
     setLines((prev) => {
-      const isLast = prev.length > 0 && prev[prev.length - 1].id === lineId;
-      const updated = prev.map((line) => {
+      return prev.map((line) => {
         if (line.id === lineId) {
           const qty = line.quantity || 0;
           const rate = foundItem.rate || 0;
@@ -516,24 +491,6 @@ export const FactoryImportManager: React.FC<FactoryImportManagerProps> = ({
         }
         return line;
       });
-
-      // Auto add blank next line if selecting item on the last line
-      if (isLast) {
-        const newLineId = `line-${Date.now()}-${prev.length + 1}`;
-        updated.push({
-          id: newLineId,
-          itemId: '',
-          itemCode: '',
-          itemName: '',
-          sizeSpec: '',
-          unit: 'Coils',
-          category: '',
-          quantity: 0,
-          rate: 0,
-          amount: 0
-        });
-      }
-      return updated;
     });
 
     setLineSearchQueries((prev) => ({ ...prev, [lineId]: foundItem.name }));
@@ -611,27 +568,9 @@ export const FactoryImportManager: React.FC<FactoryImportManagerProps> = ({
         return;
       }
 
-      // Quantity is valid (> 0), go to next line item search box or auto add if needed
+      // Quantity is valid (> 0); continue to the next existing row or add-row button.
       if (index === lines.length - 1) {
-        const newLineId = `line-${Date.now()}-${lines.length + 1}`;
-        const newLine: FactoryImportLine = {
-          id: newLineId,
-          itemId: '',
-          itemCode: '',
-          itemName: '',
-          sizeSpec: '',
-          unit: 'Coils',
-          category: '',
-          quantity: 0,
-          rate: 0,
-          amount: 0
-        };
-        setLines((prev) => [...prev, newLine]);
-        setTimeout(() => {
-          if (itemSearchRefs.current[newLineId]) {
-            itemSearchRefs.current[newLineId]?.focus();
-          }
-        }, 80);
+        addFactoryLineButtonRef.current?.focus();
       } else {
         const nextLine = lines[index + 1];
         if (nextLine && itemSearchRefs.current[nextLine.id]) {
@@ -1329,25 +1268,27 @@ export const FactoryImportManager: React.FC<FactoryImportManagerProps> = ({
     setDiscountPercent(challan.discountPercent || 0);
     setDiscountAmount(challan.discountAmount || 0);
 
-    const loadedLines: FactoryImportLine[] = (challan.lines || []).map((l, idx) => ({
-      id: l.id || `line-${Date.now()}-${idx}`,
-      itemId: l.itemId || '',
-      itemCode: l.itemCode || '',
-      itemName: l.itemName || '',
-      sizeSpec: l.sizeSpec || '',
-      unit: l.unit || 'Coils',
-      category: l.category || '',
-      quantity: Number(l.quantity) || 0,
-      rate: Number(l.rate) || 0,
-      amount: Number(l.amount) || (Number(l.quantity) || 0) * (Number(l.rate) || 0),
-      red: l.red || '',
-      black: l.black || '',
-      yellow: l.yellow || '',
-      green: l.green || '',
-      blue: l.blue || '',
-      others: l.others || '',
-      remarks: l.remarks || ''
-    }));
+    const loadedLines: FactoryImportLine[] = (challan.lines || [])
+      .filter((line) => (line.itemName || '').trim() || (Number(line.quantity) || 0) > 0)
+      .map((l, idx) => ({
+        id: l.id || `line-${Date.now()}-${idx}`,
+        itemId: l.itemId || '',
+        itemCode: l.itemCode || '',
+        itemName: l.itemName || '',
+        sizeSpec: l.sizeSpec || '',
+        unit: l.unit || 'Coils',
+        category: l.category || '',
+        quantity: Number(l.quantity) || 0,
+        rate: Number(l.rate) || 0,
+        amount: Number(l.amount) || (Number(l.quantity) || 0) * (Number(l.rate) || 0),
+        red: l.red || '',
+        black: l.black || '',
+        yellow: l.yellow || '',
+        green: l.green || '',
+        blue: l.blue || '',
+        others: l.others || '',
+        remarks: l.remarks || ''
+      }));
 
     if (loadedLines.length === 0) {
       loadedLines.push({
@@ -2612,6 +2553,7 @@ export const FactoryImportManager: React.FC<FactoryImportManagerProps> = ({
               <button
                 type="button"
                 onClick={handleAddLine}
+                ref={addFactoryLineButtonRef}
                 className="inline-flex items-center space-x-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black shadow-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -2909,25 +2851,6 @@ export const FactoryImportManager: React.FC<FactoryImportManagerProps> = ({
                   );
                 })}
 
-                {/* Fill empty padding rows up to at least 10 lines downside */}
-                {Array.from({ length: Math.max(0, 10 - lines.length) }).map((_, emptyIdx) => {
-                  const rowSl = lines.length + emptyIdx + 1;
-                  return (
-                    <tr key={`empty-row-${emptyIdx}`} className="h-9 hover:bg-cyan-500/[0.04] transition-colors">
-                      <td className="p-2 text-center font-mono font-bold text-slate-500 bg-[#081b28]/40">
-                        {rowSl}
-                      </td>
-                      <td className="p-2"></td>
-                      <td className="p-2"></td>
-                      <td className="p-2"></td>
-                      <td className="p-2 bg-emerald-500/[0.04] border-r border-emerald-500/15"></td>
-                      <td className="p-2 bg-[#081b28]/30 border-l border-cyan-500/15"></td>
-                      <td className="p-2"></td>
-                      <td className="p-2"></td>
-                      <td className="p-2"></td>
-                    </tr>
-                  );
-                })}
               </tbody>
             </table>
           </div>
@@ -3505,7 +3428,9 @@ export const FactoryImportManager: React.FC<FactoryImportManagerProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-300">
-                    {selectedChallanForModal.lines.map((l, idx) => {
+                    {selectedChallanForModal.lines
+                      .filter((line) => (line.itemName || '').trim() || (Number(line.quantity) || 0) > 0)
+                      .map((l, idx) => {
                       const hasColors =
                         Number(l.red) > 0 ||
                         Number(l.black) > 0 ||
@@ -3541,23 +3466,6 @@ export const FactoryImportManager: React.FC<FactoryImportManagerProps> = ({
                           <td className="p-2 text-right font-black text-slate-900 font-mono">
                             ৳{(l.amount ?? 0).toLocaleString('en-IN')}
                           </td>
-                        </tr>
-                      );
-                    })}
-
-                    {/* Fill empty padding rows up to 10 lines downside */}
-                    {Array.from({ length: Math.max(0, 10 - selectedChallanForModal.lines.length) }).map((_, emptyIdx) => {
-                      const rowSl = selectedChallanForModal.lines.length + emptyIdx + 1;
-                      return (
-                        <tr key={`modal-empty-${emptyIdx}`} className="h-8">
-                          <td className="p-2 border-r border-slate-300 text-center font-mono text-slate-300 font-bold">
-                            {rowSl}
-                          </td>
-                          <td className="p-2 border-r border-slate-300"></td>
-                          <td className="p-2 border-r border-slate-300"></td>
-                          <td className="p-2 border-r border-slate-300"></td>
-                          <td className="p-2 border-r border-slate-300"></td>
-                          <td className="p-2"></td>
                         </tr>
                       );
                     })}

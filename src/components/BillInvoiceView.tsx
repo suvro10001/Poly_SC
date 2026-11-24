@@ -305,6 +305,7 @@ export const BillInvoiceView: React.FC<BillInvoiceViewProps> = ({
   const itemInputRefs = useRef<{ [index: number]: HTMLInputElement | null }>({});
   const qtyInputRefs = useRef<{ [index: number]: HTMLInputElement | null }>({});
   const unitInputRefs = useRef<{ [index: number]: HTMLSelectElement | null }>({});
+  const addLineButtonRef = useRef<HTMLButtonElement>(null);
   const discountPercentInputRef = useRef<HTMLInputElement>(null);
   const discountAmountInputRef = useRef<HTMLInputElement>(null);
   const saveButtonRef = useRef<HTMLButtonElement>(null);
@@ -827,14 +828,15 @@ export const BillInvoiceView: React.FC<BillInvoiceViewProps> = ({
     return lines.length;
   };
 
-  // Auto-advance focus to next row's Name Of Items (appending a row when on the last row)
+  // Advance to the next existing row, or focus the explicit add-row button.
   const advanceToNextBillRow = (idx: number) => {
     const nextIdx = idx + 1;
     const isLastRow = idx >= lines.length - 1;
-    if (isLastRow) {
-      handleAddLine();
-    }
     setTimeout(() => {
+      if (isLastRow) {
+        addLineButtonRef.current?.focus();
+        return;
+      }
       const nextInput = itemInputRefs.current[nextIdx];
       if (nextInput) {
         nextInput.focus();
@@ -1039,7 +1041,10 @@ export const BillInvoiceView: React.FC<BillInvoiceViewProps> = ({
 
   // Save Bill Action
   const handleSaveAndToast = () => {
-    if (lines.every((l) => !l.itemDescription && (Number(l.coilQty) || 0) <= 0)) {
+    const billLines = lines.filter((line) =>
+      Boolean((line.itemDescription || line.itemName || '').trim()) || (Number(line.coilQty) || 0) > 0
+    );
+    if (billLines.length === 0) {
       showToast('Please add at least one valid item before saving.', 'error');
       return;
     }
@@ -1059,7 +1064,7 @@ export const BillInvoiceView: React.FC<BillInvoiceViewProps> = ({
         discountAmount: discountAmount,
         discountPercent: discountPercent
       },
-      lines: lines.map((l) => ({
+      lines: billLines.map((l) => ({
         ...l,
         itemDescription: (l.itemDescription || l.itemName || '').trim(),
         itemName: (l.itemDescription || l.itemName || '').trim(),
@@ -2294,17 +2299,7 @@ export const BillInvoiceView: React.FC<BillInvoiceViewProps> = ({
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
-                            // "next unit, unit to again select item, item to colour input form, form to quantity or quantity, it's continious"
-                            if (idx === lines.length - 1) {
-                              handleAddLine();
-                              setTimeout(() => {
-                                itemInputRefs.current[idx + 1]?.focus();
-                                itemInputRefs.current[idx + 1]?.select();
-                              }, 60);
-                            } else {
-                              itemInputRefs.current[idx + 1]?.focus();
-                              itemInputRefs.current[idx + 1]?.select();
-                            }
+                            advanceToNextBillRow(idx);
                           }
                         }}
                         className="bg-transparent text-center focus:outline-none cursor-pointer font-bold text-xs"
@@ -2340,19 +2335,6 @@ export const BillInvoiceView: React.FC<BillInvoiceViewProps> = ({
                 );
               })}
 
-              {/* Pad Empty Filler Lines */}
-              {Array.from({ length: Math.max(0, 5 - lines.length) }).map((_, padIdx) => (
-                <tr key={`filler-${padIdx}`} className="h-8 divide-x-2 divide-black">
-                  <td className="text-center font-mono text-slate-300">
-                    {String(lines.length + padIdx + 1).padStart(2, '0')}.
-                  </td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                </tr>
-              ))}
             </tbody>
 
             {/* SUMMARY ROWS */}
@@ -2453,13 +2435,14 @@ export const BillInvoiceView: React.FC<BillInvoiceViewProps> = ({
           <button
             type="button"
             onClick={handleAddLine}
+            ref={addLineButtonRef}
             className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 flex items-center gap-1 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Item Row</span>
           </button>
           <span className="text-[11px] text-slate-500 font-medium">
-            Continuous Entry: Press Enter on Unit to auto-add and jump to next item!
+            Use Add Item Row to add the next item.
           </span>
         </div>
 
@@ -3136,7 +3119,9 @@ export const BillInvoiceView: React.FC<BillInvoiceViewProps> = ({
               orderDate: orderDateStr,
               challanDate: challanDateStr
             },
-            lines,
+            lines: lines.filter((line) =>
+              Boolean((line.itemDescription || line.itemName || '').trim()) || (Number(line.coilQty) || 0) > 0
+            ),
             company,
             subtotal,
             grandTotal,
