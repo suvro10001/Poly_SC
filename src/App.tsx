@@ -1616,7 +1616,7 @@ export default function App() {
   useEffect(() => {
     if (!currentUser || BYPASS_LOGIN_FOR_DEV) return;
     const curUsername = (currentUser.username || '').toLowerCase().trim();
-    if (curUsername === 'suvroadmin') return; // root master super admin
+    if (curUsername === 'suvroadmin' || (currentUser.isSuperAdmin && !currentUser.salespersonCode)) return; // root master super admin
 
     const curCode = (currentUser.salespersonCode || '').toLowerCase().trim();
     const curId = ((currentUser as any).id || '').toLowerCase().trim();
