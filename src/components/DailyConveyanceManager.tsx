@@ -39,7 +39,7 @@ import {
   Layers
 } from 'lucide-react';
 import { formatDateDDMMYY } from '../utils/dateUtils';
-import { isAnyAdmin, isInCharge, isStrictSuperAdmin, getUserBranch } from '../utils/branchAccess';
+import { isAnyAdmin, isInCharge, isStrictSuperAdmin, getUserBranch, isMarketingOfficer } from '../utils/branchAccess';
 import * as XLSX from 'xlsx';
 
 interface DailyConveyanceManagerProps {
@@ -744,7 +744,7 @@ export const DailyConveyanceManager: React.FC<DailyConveyanceManagerProps> = ({
                 onChange={(e) => setSelectedUser(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-bold focus:ring-2 focus:ring-blue-900 focus:outline-none cursor-pointer"
               >
-                {salespersons.map((s) => (
+                {salespersons.filter(isMarketingOfficer).map((s) => (
                   <option key={s.id} value={s.name}>
                     {s.name} ({s.code || 'Staff'})
                   </option>
@@ -1217,7 +1217,7 @@ export const DailyConveyanceManager: React.FC<DailyConveyanceManagerProps> = ({
                   className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                 >
                   <option value="all">👤 All Field Personnel</option>
-                  {salespersons.map((s) => (
+                  {salespersons.filter(isMarketingOfficer).map((s) => (
                     <option key={s.id} value={s.name}>
                       {s.name} ({s.code || 'Staff'})
                     </option>

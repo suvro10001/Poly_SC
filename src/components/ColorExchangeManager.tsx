@@ -332,6 +332,7 @@ export const ColorExchangeManager: React.FC<ColorExchangeManagerProps> = ({
 
   const handleSelectParty = (p: Party) => {
     setPartyName(p.name);
+    setPartySearchQuery('');
     setPartyAddress(p.address || '');
     setPartyPhone(p.phone || '');
     setPartySearchOpen(false);
@@ -584,7 +585,7 @@ export const ColorExchangeManager: React.FC<ColorExchangeManagerProps> = ({
       </div>
 
       {exchangeSubTab === 'create' && (
-        <div className="cyber-glass-card rounded-2xl text-white">
+        <div className={`cyber-glass-card rounded-2xl text-white ${partySearchOpen ? 'relative z-30' : ''}`}>
           {/* Form Header Info */}
           <div className="p-5 cyber-glass-header border-b border-cyan-500/25 space-y-4 rounded-t-2xl">
             {/* Inputs: Party, Date, Exchange No */}
@@ -605,6 +606,7 @@ export const ColorExchangeManager: React.FC<ColorExchangeManagerProps> = ({
                       setPartyHighlightIdx(0);
                     }}
                     onFocus={() => {
+                      setPartySearchQuery('');
                       setPartySearchOpen(true);
                       setPartyHighlightIdx(0);
                     }}
@@ -669,7 +671,7 @@ export const ColorExchangeManager: React.FC<ColorExchangeManagerProps> = ({
                 {partySearchOpen && (
                   <div
                     ref={partyDropdownRef}
-                    className="absolute left-0 right-0 top-full mt-1 bg-[#091e2c]/98 backdrop-blur-xl border border-cyan-400/35 rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto divide-y divide-cyan-500/15"
+                    className="absolute left-0 right-0 top-full mt-1 bg-[#091e2c] backdrop-blur-xl border border-cyan-400/35 rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto divide-y divide-cyan-500/15"
                   >
                     <div className="p-2 bg-[#0c2638] border-b border-cyan-500/25 flex items-center justify-between sticky top-0">
                       <span className="text-[11px] font-bold text-cyan-200">

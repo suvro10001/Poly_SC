@@ -101,10 +101,10 @@ export const PolyPadChallanReadOnlyView: React.FC<PolyPadChallanReadOnlyViewProp
           }}
         >
           <div className="relative z-10 space-y-1">
-            {/* Header: Top 1.5" strictly reserved for Company Name & Logo */}
+            {/* Keep only 0.5" for the company name and logo so the challan starts higher. */}
             <div className="text-center pb-0 space-y-0 text-black font-sans leading-tight pt-0">
               <div
-                style={{ height: '1.5in', minHeight: '1.5in' }}
+                style={{ height: '0.5in', minHeight: '0.5in' }}
                 className={`flex items-center justify-center space-x-2 ${
                   padHeaderMode !== 'plain' ? 'hide-on-preprinted-pad invisible opacity-0' : ''
                 }`}
@@ -148,7 +148,7 @@ export const PolyPadChallanReadOnlyView: React.FC<PolyPadChallanReadOnlyViewProp
 
               {/* Delivery Challan Badge */}
               <div className="pt-1 pb-0.5">
-                <span className="inline-block bg-slate-900 text-white border border-black px-4 py-0.5 rounded text-xs font-black tracking-widest uppercase">
+                <span className="delivery-challan-badge challan-badge inline-block bg-slate-900 text-white border border-black px-4 py-0.5 rounded text-xs font-black tracking-widest uppercase">
                   DELIVERY CHALLAN
                 </span>
               </div>

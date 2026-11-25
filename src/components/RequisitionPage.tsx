@@ -85,7 +85,9 @@ import {
   isAnyAdmin,
   filterBranchesForUser,
   filterSalespersonsByBranch,
-  partyMatchesBranch
+  partyMatchesBranch,
+  isMarketingOfficer,
+  isAdminMarketingLabel
 } from '../utils/branchAccess';
 import { jsPDF } from 'jspdf';
 import { EmailSenderModal } from './EmailSenderModal';
@@ -637,12 +639,15 @@ export const RequisitionPage: React.FC<RequisitionPageProps> = ({
     if (!currentUser) return 'Subrata';
     const sp = (salespersons || []).find(
       (s) =>
-        s.code?.toLowerCase() === currentUser.username?.toLowerCase() ||
-        s.name?.toLowerCase() === (currentUser.name || '').toLowerCase() ||
-        (s.name && currentUser.username && s.name.toLowerCase().includes(currentUser.username.toLowerCase()))
+        isMarketingOfficer(s) &&
+        (s.code?.toLowerCase() === currentUser.username?.toLowerCase() ||
+          s.name?.toLowerCase() === (currentUser.name || '').toLowerCase() ||
+          (s.name && currentUser.username && s.name.toLowerCase().includes(currentUser.username.toLowerCase())))
     );
-    return sp?.name || currentUser.name || currentUser.username || 'Subrata';
-  }, [currentUser, salespersons]);
+    if (sp?.name) return sp.name;
+    if (isSuperAdmin) return salespersons.find(isMarketingOfficer)?.name || 'Subrata';
+    return currentUser.name || currentUser.username || 'Subrata';
+  }, [currentUser, salespersons, isSuperAdmin]);
   const [categoryOrder, setCategoryOrder] = useState<string[]>(() => getAllCategories());
   useEffect(() => {
     const refreshCategories = () => setCategoryOrder(getAllCategories());
@@ -1527,6 +1532,7 @@ export const RequisitionPage: React.FC<RequisitionPageProps> = ({
   // Marketing user directory names (default Subrata)
   const userDirectoryNames = useMemo(() => {
     const fromSp = salespersons
+      .filter(isMarketingOfficer)
       .map((s) => normalizeMarketingPersonName(s.name?.trim()))
       .filter((n): n is string => Boolean(n && n.length > 0));
     const unique = Array.from(new Set(fromSp));
@@ -1537,7 +1543,7 @@ export const RequisitionPage: React.FC<RequisitionPageProps> = ({
   const allMarketingFilterNames = useMemo(() => {
     const set = new Set<string>();
     const addClean = (rawName?: string | null) => {
-      if (!rawName || !rawName.trim()) return;
+      if (!rawName || !rawName.trim() || isAdminMarketingLabel(rawName, salespersons)) return;
       const clean = normalizeMarketingPersonName(rawName.trim());
       if (clean) set.add(clean);
     };
@@ -4815,7 +4821,7 @@ export const RequisitionPage: React.FC<RequisitionPageProps> = ({
                 <PolyCablesLogo size="xl" showSubtitle={true} subtitleText="IND. LTD." />
               </div>
               <div className="flex justify-center">
-                <span className="bg-slate-950 text-white text-[11px] sm:text-xs font-black px-5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                <span className="requisition-entry-badge bg-slate-950 text-white text-[11px] sm:text-xs font-black px-5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
                   REQUISITION ENTRY SLIP
                 </span>
               </div>
@@ -8821,7 +8827,7 @@ export const RequisitionPage: React.FC<RequisitionPageProps> = ({
                 {company?.address && (
                   <p className="text-[11px] text-slate-600">{company.address}</p>
                 )}
-                <div className="inline-block mt-1.5 px-4 py-0.5 rounded bg-slate-950 text-white font-black text-xs uppercase tracking-widest">
+                <div className="delivery-challan-badge challan-badge inline-block mt-1.5 px-4 py-0.5 rounded bg-slate-950 text-white font-black text-xs uppercase tracking-widest">
                   DELIVERY CHALLAN
                 </div>
               </div>

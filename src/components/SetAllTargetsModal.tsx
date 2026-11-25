@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Salesperson, BranchLocation } from '../types';
-import { cleanBranchName, isUnwantedSalesCenter } from '../utils/branchAccess';
+import { cleanBranchName, isUnwantedSalesCenter, isMarketingOfficer } from '../utils/branchAccess';
 import {
   X,
   Target,
@@ -107,6 +107,8 @@ export const SetAllTargetsModal: React.FC<SetAllTargetsModalProps> = ({
   // Filtered salespersons list
   const filteredSalespersons = useMemo(() => {
     return salespersons.filter((sp) => {
+      if (!isMarketingOfficer(sp)) return false;
+
       // Branch filter
       if (selectedBranchId !== 'all') {
         const targetBranch = branches.find((b) => b.id === selectedBranchId);

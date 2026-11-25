@@ -16,6 +16,7 @@ import {
   isAccountsOrStaff,
   hasUserTarget,
   isMarketingOfficer,
+  isAdminSalesperson,
   filterBranchesForUser,
   filterSalespersonsByBranch,
   getUserBranch,
@@ -3923,6 +3924,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
 
     effectiveAllSalespersons.forEach((sp) => {
       if (!sp || !sp.name || !sp.name.trim()) return;
+      if (isAdminSalesperson(sp)) return;
       const cleanName = sp.name.trim();
       const lower = cleanName.toLowerCase();
       if (seenUsers.has(lower)) return;
@@ -3958,6 +3960,10 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
       const eName = (exp.entityName || (exp as any).assignedEntity || '').trim();
       if (!eName) return;
       const eLow = eName.toLowerCase();
+      const matchedSalesperson = effectiveAllSalespersons.find(
+        (sp) => sp.name.trim().toLowerCase() === eLow
+      );
+      if (matchedSalesperson && isAdminSalesperson(matchedSalesperson)) return;
       if (seenUsers.has(eLow) || branchNamesSet.has(cleanSalesCenterName(eName))) return;
       if (options.some((o) => o.value.toLowerCase() === eLow || o.value.toLowerCase() === cleanSalesCenterName(eName).toLowerCase())) return;
       seenUsers.add(eLow);
@@ -11038,7 +11044,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                               </optgroup>
                               {!isUserSalesCenterFixed && !mrPartyFixedBranch && (
                                 <optgroup label="Assigned Salespersons / Officers">
-                                  {salespersons.map((sp) => (
+                                  {salespersons.filter((sp) => !isAdminSalesperson(sp)).map((sp) => (
                                     <option key={sp.id} value={sp.name}>
                                       {sp.name}
                                     </option>

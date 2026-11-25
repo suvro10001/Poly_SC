@@ -81,9 +81,9 @@ export const PrintPreviewDeliveryChallan: React.FC<PrintPreviewDeliveryChallanPr
           }}
         >
           <div>
-            {/* Top 1.5" strictly reserved for Company Logo */}
+            {/* Keep only 0.5" for the company logo so the document starts higher on paper. */}
             <div
-              style={{ height: '1.5in', minHeight: '1.5in' }}
+              style={{ height: '0.5in', minHeight: '0.5in' }}
               className={`flex items-center justify-center ${
                 !slipPadSettings.showCompanyLogo ? 'hide-on-preprinted-pad invisible opacity-0' : ''
               }`}
@@ -93,7 +93,7 @@ export const PrintPreviewDeliveryChallan: React.FC<PrintPreviewDeliveryChallanPr
               </h1>
             </div>
 
-            {/* Company Address, Title & Challan Metadata start immediately after 1.5" mark */}
+            {/* Company address, title, and challan metadata follow the compact logo area. */}
             <div className="border-b-2 border-slate-800 pb-3 mb-4 text-center">
               <div className="flex flex-col items-center justify-center text-center">
                 {slipPadSettings.companySubtitle && (
@@ -112,7 +112,7 @@ export const PrintPreviewDeliveryChallan: React.FC<PrintPreviewDeliveryChallanPr
               </div>
 
               <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 text-left">
-                <div className="inline-block bg-sky-900 text-white font-black px-4 py-1 text-xs tracking-wider uppercase rounded-xs">
+                <div className="delivery-challan-badge challan-badge inline-block bg-sky-900 text-white font-black px-4 py-1 text-xs tracking-wider uppercase rounded-xs">
                   DELIVERY CHALLAN & GATE PASS
                 </div>
                 <div className="flex flex-wrap items-center gap-4 text-xs">

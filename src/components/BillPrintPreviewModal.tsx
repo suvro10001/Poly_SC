@@ -367,7 +367,7 @@ export const BillPrintPreviewModal: React.FC<BillPrintPreviewModalProps> = ({
     }
   };
 
-  useAutoPrintOnOpen(autoPrintOnOpen && isOpen, handlePrint, autoPrintOnOpen ? onClose : undefined);
+  useAutoPrintOnOpen(isOpen, handlePrint, onClose, autoPrintOnOpen);
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -917,10 +917,10 @@ export const BillPrintPreviewModal: React.FC<BillPrintPreviewModalProps> = ({
                 {/* Paper Content Wrapper */}
                 <div className="relative flex flex-col justify-between h-full overflow-hidden">
                   <div className="relative z-10 space-y-1.5">
-                    {/* Header Banner: Top 1.5" strictly reserved for company logo */}
+                    {/* Keep only 0.5" for the company logo so the document starts higher on paper. */}
                     <div className="text-center pb-0 space-y-0 text-black font-sans leading-tight pt-0">
                       <div
-                        style={{ height: '1.5in', minHeight: '1.5in' }}
+                        style={{ height: '0.5in', minHeight: '0.5in' }}
                         className={`flex items-center justify-center ${
                           padHeaderMode !== 'plain' ? 'hide-on-preprinted-pad invisible opacity-0' : ''
                         }`}
@@ -928,7 +928,7 @@ export const BillPrintPreviewModal: React.FC<BillPrintPreviewModalProps> = ({
                         <PolyCablesLogo size="xl" showSubtitle={false} subtitleText="" />
                       </div>
 
-                      {/* Address, Title & Invoice Metadata start immediately after the 1.5" mark */}
+                      {/* Address, title, and invoice metadata follow the compact logo area. */}
                       {branchAddress.line1 ? (
                         <div className={`space-y-0.5 pt-0 mt-0 pb-0 mb-0 print:pb-0 print:mb-0 ${padHeaderMode === 'hide_all' ? 'hide-on-preprinted-pad invisible opacity-0' : ''}`}>
                           <p style={{ fontSize: '14px' }} className="font-extrabold text-[14px] leading-tight text-black print:text-[14px] madhupur-address-line">
@@ -949,7 +949,7 @@ export const BillPrintPreviewModal: React.FC<BillPrintPreviewModalProps> = ({
 
                       {docType === 'challan' ? (
                         <div className="pt-1 pb-0.5 text-center">
-                          <span className="inline-block bg-white text-black border-2 border-black px-4 py-0.5 rounded text-xs font-black tracking-widest uppercase delivery-challan-badge">
+                          <span className="delivery-challan-badge challan-badge inline-block bg-slate-950 text-white border-2 border-slate-950 px-4 py-0.5 rounded text-xs font-black tracking-widest uppercase">
                             DELIVERY CHALLAN
                           </span>
                         </div>

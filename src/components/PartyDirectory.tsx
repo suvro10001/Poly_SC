@@ -11,7 +11,8 @@ import {
   filterSalespersonsByBranch,
   isStrictSuperAdmin,
   isAccountsAdmin,
-  isAnyAdmin
+  isAnyAdmin,
+  isMarketingOfficer
 } from '../utils/branchAccess';
 import { SalesCenterSearchFilter } from './SalesCenterSearchFilter';
 import { checkCanTakeEntry } from '../utils/cloudConnection';
@@ -2193,7 +2194,7 @@ export const PartyDirectory: React.FC<PartyDirectoryProps> = ({
                 value={newParty.salesmanCode}
                 onChange={(e) => {
                   const val = e.target.value;
-                  const match = salespersons.find((s) => s.code === val);
+                  const match = salespersons.find((s) => s.code === val && isMarketingOfficer(s));
                   setNewParty({
                     ...newParty,
                     salesmanCode: val,
@@ -2203,7 +2204,7 @@ export const PartyDirectory: React.FC<PartyDirectoryProps> = ({
                 className="w-full p-2 border border-cyan-500/30 rounded-lg bg-[#061520] font-bold text-cyan-200"
               >
                 <option value="">-- Select Salesperson --</option>
-                {salespersons.map((s) => (
+                {salespersons.filter(isMarketingOfficer).map((s) => (
                   <option key={s.id} value={s.code}>
                     {s.code} - {s.name} {s.branchName ? `(${cleanSalesCenterName(s.branchName)})` : ''}
                   </option>
@@ -2315,7 +2316,7 @@ export const PartyDirectory: React.FC<PartyDirectoryProps> = ({
                             value={editForm.salesmanCode || ''}
                             onChange={(e) => {
                               const val = e.target.value;
-                              const match = salespersons.find((s) => s.code === val);
+                              const match = salespersons.find((s) => s.code === val && isMarketingOfficer(s));
                               setEditForm({
                                 ...editForm,
                                 salesmanCode: val,
@@ -2327,7 +2328,7 @@ export const PartyDirectory: React.FC<PartyDirectoryProps> = ({
                             className="w-full p-1 bg-[#061520] border border-cyan-500/35 rounded text-xs font-bold text-cyan-200"
                           >
                             <option value="">-- Salesperson --</option>
-                            {salespersons.map((s) => (
+                            {salespersons.filter(isMarketingOfficer).map((s) => (
                               <option key={s.id} value={s.code}>
                                 {s.name}
                               </option>

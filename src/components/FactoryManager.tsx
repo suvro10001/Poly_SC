@@ -11,7 +11,7 @@ import {
   RequisitionStage
 } from '../types';
 import { extractBillNoFromReqNo, extractReqLineColors } from './RequisitionPage';
-import { cleanBranchName, isStrictSuperAdmin, isAnyAdmin } from '../utils/branchAccess';
+import { cleanBranchName, isStrictSuperAdmin, isAnyAdmin, isMarketingOfficer, isAdminMarketingLabel } from '../utils/branchAccess';
 import { getTodayISO, formatDateDDMMYY } from '../utils/dateUtils';
 import { convertToTakaWords } from '../utils/numberToWords';
 import { isColorApplicableCable } from '../utils/categoryHelper';
@@ -68,6 +68,9 @@ export const FactoryManager: React.FC<FactoryManagerProps> = ({
   onNavigateToStoredBills,
   onBack
 }) => {
+  const marketingPersonLabel = (name?: string | null) =>
+    name && !isAdminMarketingLabel(name, salespersons) ? name : 'Marketing Officer';
+
   const [localSubTab, setLocalSubTab] = useState<'approved_history' | 'delivered'>('approved_history');
   const activeSubTab = propSubTab || localSubTab;
   const setActiveSubTab = propSetSubTab || setLocalSubTab;
@@ -297,12 +300,13 @@ export const FactoryManager: React.FC<FactoryManagerProps> = ({
     // Salesperson info
     const spMatch = salespersons.find(
       (s) =>
-        s.code === deliveringReq.marketingPersonName ||
-        (s.name && s.name.toLowerCase().includes((deliveringReq.marketingPersonName || '').toLowerCase())) ||
-        (deliveringReq.marketingPersonName && deliveringReq.marketingPersonName.toLowerCase().includes((s.name || '').toLowerCase()))
+        isMarketingOfficer(s) &&
+        (s.code === deliveringReq.marketingPersonName ||
+          (s.name && s.name.toLowerCase().includes((deliveringReq.marketingPersonName || '').toLowerCase())) ||
+          (deliveringReq.marketingPersonName && deliveringReq.marketingPersonName.toLowerCase().includes((s.name || '').toLowerCase())))
     );
     const spCode = spMatch?.code || '134';
-    const spName = spMatch?.name || deliveringReq.marketingPersonName || 'Subrata Sutradhar';
+    const spName = spMatch?.name || 'Subrata Sutradhar';
 
     // Calculate Bill Amounts
     const subtotal = linesToDeliver.reduce((sum, l) => sum + l.amount, 0);
@@ -628,7 +632,7 @@ export const FactoryManager: React.FC<FactoryManagerProps> = ({
                     <span className="text-slate-400 text-xs">•</span>
                     <span className="text-emerald-300 font-semibold text-xs flex items-center gap-1">
                       <User className="w-3 h-3" />
-                      {req.marketingPersonName || 'Marketing Officer'}
+                      {marketingPersonLabel(req.marketingPersonName)}
                     </span>
                   </div>
 
@@ -798,7 +802,7 @@ export const FactoryManager: React.FC<FactoryManagerProps> = ({
                     <span className="text-slate-400 text-xs">•</span>
                     <span className="text-amber-300 font-semibold text-xs flex items-center gap-1">
                       <User className="w-3 h-3" />
-                      {req.marketingPersonName || 'Marketing Officer'}
+                      {marketingPersonLabel(req.marketingPersonName)}
                     </span>
                   </div>
 

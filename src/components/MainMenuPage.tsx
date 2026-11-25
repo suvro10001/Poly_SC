@@ -76,7 +76,8 @@ import {
   billMatchesBranch,
   collectionMatchesBranch,
   cleanBranchName,
-  isUnwantedSalesCenter
+  isUnwantedSalesCenter,
+  isMarketingOfficer
 } from '../utils/branchAccess';
 import { AISalesForecastModal } from './AISalesForecastModal';
 import { getActivePriceCircularInfo } from '../utils/priceCircularHelper';
@@ -284,58 +285,10 @@ export const MainMenuPage: React.FC<MainMenuPageProps> = ({
     const seenNames = new Set<string>();
 
     return (salespersons || []).filter((sp) => {
-      if (!sp || (sp as any).isActive === false) return false;
-      const roleLower = (sp.role || '').trim().toLowerCase();
-      const designationLower = ((sp as any).designation || '').trim().toLowerCase();
+      if (!isMarketingOfficer(sp)) return false;
       const nameLower = (sp.name || '').trim().toLowerCase();
-      const usernameLower = ((sp as any).username || '').trim().toLowerCase();
       const codeLower = (sp.code || '').trim().toLowerCase();
-
       if (!nameLower || !codeLower) return false;
-
-      const userTypeLower = String(sp.userType || '').trim().toLowerCase();
-
-      // 1. Strict admin, management, factory, showroom in-charge & staff exclusion (always runs before userType check)
-      const isExcluded =
-        sp.isSuperAdmin ||
-        Boolean(sp.isInCharge) ||
-        codeLower === '111' ||
-        nameLower === 'suvroadmin' ||
-        usernameLower === 'suvroadmin' ||
-        userTypeLower === 'user' ||
-        userTypeLower === 'admin' ||
-        userTypeLower === 'factory' ||
-        [
-          'admin',
-          'factory',
-          'accountant',
-          'accounts',
-          'manager',
-          'showroom in-charge',
-          'in-charge',
-          'incharge',
-          'approver',
-          'auditor',
-          'office staff',
-          'showroom staff',
-          'sales center staff',
-          'cashier',
-          'storekeeper',
-          'operator',
-          'peon',
-          'cleaner',
-          'hr'
-        ].some((kw) => roleLower.includes(kw) || designationLower.includes(kw)) ||
-        nameLower.includes('admin') ||
-        usernameLower.includes('admin') ||
-        (roleLower === 'staff' || designationLower === 'staff' || roleLower === 'user' || designationLower === 'user') ||
-        ((roleLower.includes('staff') || designationLower.includes('staff')) &&
-          !roleLower.includes('marketing') &&
-          !designationLower.includes('marketing'));
-
-      if (isExcluded) {
-        return false;
-      }
 
       if (scopeToCenters) {
         const spBranchId = String(sp.branchId || '').toLowerCase();
@@ -353,20 +306,6 @@ export const MainMenuPage: React.FC<MainMenuPageProps> = ({
           (spBranchName && Array.from(allowedNames).some((n) => spBranchName.includes(n) || n.includes(spBranchName)));
         if (!matchesCenter) return false;
       }
-
-      const isExplicitMarketingOfficer =
-        sp.userType === 'marketing' ||
-        roleLower.includes('marketing') ||
-        roleLower.includes('representative') ||
-        roleLower.includes('officer') ||
-        roleLower.includes('executive') ||
-        designationLower.includes('marketing') ||
-        designationLower.includes('representative') ||
-        designationLower.includes('officer') ||
-        designationLower.includes('executive') ||
-        (!roleLower && !designationLower);
-
-      if (!isExplicitMarketingOfficer) return false;
 
       if (seenCodes.has(codeLower) || seenNames.has(nameLower)) return false;
       seenCodes.add(codeLower);
@@ -851,7 +790,7 @@ export const MainMenuPage: React.FC<MainMenuPageProps> = ({
     (currentUser?.userRole || '').toLowerCase().includes('staff')
   );
   const isInChargeOrStaff = inCharge || isStaffOrAccounts;
-  const isMarketingOfficer = !isAdminUser && !isInChargeOrStaff;
+  const isMarketingUser = !isAdminUser && !isInChargeOrStaff;
 
   // Admin-Wise Sales & Collection Slices (Super Admin View) + Sales-Center-Wise Slices (Admin View)
   const { adminWiseSalesSlices, adminWiseCollectionSlices, adminWiseGrandSales, adminWiseGrandCollection } = useMemo(() => {

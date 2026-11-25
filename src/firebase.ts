@@ -3,19 +3,20 @@ import { initializeApp } from 'firebase/app';
 import {
   getFirestore,
   collection,
-  onSnapshot,
+  onSnapshot as firestoreOnSnapshot,
   doc,
   setDoc as firestoreSetDoc,
   deleteDoc as firestoreDeleteDoc,
   writeBatch as firestoreWriteBatch,
-  getDocFromServer,
-  getDocsFromServer,
-  getDoc,
-  getDocs,
+  getDocFromServer as firestoreGetDocFromServer,
+  getDocsFromServer as firestoreGetDocsFromServer,
+  getDoc as firestoreGetDoc,
+  getDocs as firestoreGetDocs,
   setLogLevel,
   SetOptions
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
+import { recordFirestoreUsage } from './utils/firestoreUsage';
 
 // Silence verbose internal Firestore SDK logs
 try {
@@ -493,6 +494,7 @@ export async function setDoc<T = any>(
     } else {
       await firestoreSetDoc(reference, cleanData);
     }
+    recordFirestoreUsage('writes');
     reportCloudSyncSuccess(`Saved ${refPath || 'cloud record'}`);
   } catch (err: any) {
     if (isQuotaRelatedError(err)) {
@@ -512,6 +514,7 @@ export async function deleteDoc(reference: any): Promise<void> {
   const refPath = reference?.path || null;
   try {
     await firestoreDeleteDoc(reference);
+    recordFirestoreUsage('deletes');
     reportCloudSyncSuccess(`Deleted ${refPath || 'cloud record'}`);
   } catch (err: any) {
     if (isQuotaRelatedError(err)) {
@@ -528,10 +531,23 @@ export async function deleteDoc(reference: any): Promise<void> {
 export function writeBatch(firestore: any) {
   const batch = firestoreWriteBatch(firestore);
   const origSet = batch.set.bind(batch);
+  const origUpdate = batch.update.bind(batch);
+  const origDelete = batch.delete.bind(batch);
   const origCommit = batch.commit.bind(batch);
+  let writeCount = 0;
+  let deleteCount = 0;
   batch.set = (documentRef: any, data: any, options?: any) => {
     const cleanData = cleanForFirestore(data);
+    writeCount += 1;
     return options ? origSet(documentRef, cleanData, options) : origSet(documentRef, cleanData);
+  };
+  batch.update = (...args: any[]) => {
+    writeCount += 1;
+    return origUpdate(...args);
+  };
+  batch.delete = (...args: any[]) => {
+    deleteCount += 1;
+    return origDelete(...args);
   };
   batch.commit = async () => {
     if (isFirestoreQuotaExhausted()) {
@@ -539,6 +555,8 @@ export function writeBatch(firestore: any) {
     }
     try {
       const res = await origCommit();
+      recordFirestoreUsage('writes', writeCount);
+      recordFirestoreUsage('deletes', deleteCount);
       reportCloudSyncSuccess('Batch cloud sync completed');
       return res;
     } catch (err: any) {
@@ -551,6 +569,60 @@ export function writeBatch(firestore: any) {
   return batch;
 }
 
-export { collection, onSnapshot, doc, getDocFromServer, getDocsFromServer, getDoc, getDocs };
+function recordSnapshotReads(snapshot: any): void {
+  if (typeof snapshot?.docChanges === 'function') {
+    const billableChanges = snapshot.docChanges().filter((change: any) => change.type !== 'removed').length;
+    recordFirestoreUsage('reads', billableChanges);
+    return;
+  }
+  recordFirestoreUsage('reads', 1);
+}
+
+export async function getDocFromServer(
+  reference: Parameters<typeof firestoreGetDocFromServer>[0]
+) {
+  const snapshot = await firestoreGetDocFromServer(reference);
+  recordFirestoreUsage('reads');
+  return snapshot;
+}
+
+export async function getDocsFromServer(
+  query: Parameters<typeof firestoreGetDocsFromServer>[0]
+) {
+  const snapshot = await firestoreGetDocsFromServer(query);
+  recordFirestoreUsage('reads', snapshot.size);
+  return snapshot;
+}
+
+export async function getDoc(reference: Parameters<typeof firestoreGetDoc>[0]) {
+  const snapshot = await firestoreGetDoc(reference);
+  recordFirestoreUsage('reads');
+  return snapshot;
+}
+
+export async function getDocs(query: Parameters<typeof firestoreGetDocs>[0]) {
+  const snapshot = await firestoreGetDocs(query);
+  recordFirestoreUsage('reads', snapshot.size);
+  return snapshot;
+}
+
+export const onSnapshot: typeof firestoreOnSnapshot = ((reference: any, ...args: any[]) => {
+  const wrapNext = (next: (snapshot: any) => void) => (snapshot: any) => {
+    recordSnapshotReads(snapshot);
+    next(snapshot);
+  };
+  if (typeof args[0] === 'function') {
+    args[0] = wrapNext(args[0]);
+  } else if (args[0] && typeof args[0].next === 'function') {
+    args[0] = { ...args[0], next: wrapNext(args[0].next) };
+  } else if (typeof args[1] === 'function') {
+    args[1] = wrapNext(args[1]);
+  } else if (args[1] && typeof args[1].next === 'function') {
+    args[1] = { ...args[1], next: wrapNext(args[1].next) };
+  }
+  return (firestoreOnSnapshot as any)(reference, ...args);
+}) as typeof firestoreOnSnapshot;
+
+export { collection, doc };
 
 

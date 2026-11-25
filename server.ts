@@ -1,9 +1,11 @@
 import dotenv from "dotenv";
 dotenv.config();
+import { createHmac, timingSafeEqual } from "node:crypto";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
+import { GoogleAuth } from "google-auth-library";
 import nodemailer from "nodemailer";
 import * as XLSX from "xlsx";
 import { PDFParse } from "pdf-parse";
@@ -121,6 +123,205 @@ function getSmtpTransporter(custom?: SmtpCustomConfig) {
 // API routes
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
+});
+
+interface MonitoringTimeSeriesResponse {
+  timeSeries?: Array<{
+    points?: Array<{
+      value?: {
+        int64Value?: string | number;
+        doubleValue?: number;
+      };
+    }>;
+  }>;
+  nextPageToken?: string;
+}
+
+async function getFirestoreMetricCount(
+  client: Awaited<ReturnType<GoogleAuth['getClient']>>,
+  projectId: string,
+  metricType: string,
+  startTime: string,
+  endTime: string
+): Promise<number> {
+  const url = `https://monitoring.googleapis.com/v3/projects/${encodeURIComponent(projectId)}/timeSeries`;
+  let pageToken: string | undefined;
+  let total = 0;
+
+  do {
+    const response = await client.request<MonitoringTimeSeriesResponse>({
+      url,
+      method: "GET",
+      params: {
+        filter: `metric.type="${metricType}" AND resource.type="firestore.googleapis.com/Database"`,
+        "interval.startTime": startTime,
+        "interval.endTime": endTime,
+        "aggregation.alignmentPeriod": "60s",
+        "aggregation.perSeriesAligner": "ALIGN_SUM",
+        pageSize: 1000,
+        ...(pageToken ? { pageToken } : {})
+      }
+    });
+
+    for (const series of response.data.timeSeries || []) {
+      for (const point of series.points || []) {
+        const value = Number(point.value?.int64Value ?? point.value?.doubleValue ?? 0);
+        if (Number.isFinite(value) && value > 0) total += value;
+      }
+    }
+    pageToken = response.data.nextPageToken || undefined;
+  } while (pageToken);
+
+  return Math.floor(total);
+}
+
+const FIRESTORE_USAGE_SESSION_COOKIE = "polycables_firestore_usage_session";
+const FIRESTORE_USAGE_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+
+function parseFirestoreUsageLimit(value: string | undefined): number | null {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function matchesFirestoreUsageToken(authorization: string | undefined, expectedToken: string): boolean {
+  const match = authorization?.match(/^Bearer\s+(.+)$/i);
+  if (!match) return false;
+  const supplied = Buffer.from(match[1]);
+  const expected = Buffer.from(expectedToken);
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+function createFirestoreUsageSession(expectedToken: string): string {
+  const expiresAt = String(Date.now() + FIRESTORE_USAGE_SESSION_TTL_MS);
+  const signature = createHmac("sha256", expectedToken).update(expiresAt).digest("hex");
+  return `${expiresAt}.${signature}`;
+}
+
+function getFirestoreUsageSession(req: express.Request): string {
+  const cookie = req.headers.cookie || "";
+  const prefix = `${FIRESTORE_USAGE_SESSION_COOKIE}=`;
+  const entry = cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith(prefix));
+  if (!entry) return "";
+  try {
+    return decodeURIComponent(entry.slice(prefix.length));
+  } catch {
+    return "";
+  }
+}
+
+function hasValidFirestoreUsageSession(req: express.Request, expectedToken: string): boolean {
+  const [expiresAt, signature] = getFirestoreUsageSession(req).split(".");
+  const expiry = Number(expiresAt);
+  if (!Number.isSafeInteger(expiry) || expiry <= Date.now() || !signature) return false;
+  const supplied = Buffer.from(signature);
+  const expected = Buffer.from(createHmac("sha256", expectedToken).update(expiresAt).digest("hex"));
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+function setFirestoreUsageSessionCookie(res: express.Response, token: string): void {
+  res.cookie(FIRESTORE_USAGE_SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: FIRESTORE_USAGE_SESSION_TTL_MS,
+    path: "/api/firestore-usage"
+  });
+}
+
+app.post("/api/firestore-usage/session", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const expectedToken = process.env.FIRESTORE_USAGE_ADMIN_TOKEN || "";
+  if (expectedToken.length < 32) {
+    return res.status(503).json({
+      error: "Project-wide Firestore metrics are not configured on the server."
+    });
+  }
+  if (!matchesFirestoreUsageToken(req.get("authorization"), expectedToken)) {
+    return res.status(401).json({ error: "Invalid metrics access token." });
+  }
+  setFirestoreUsageSessionCookie(res, createFirestoreUsageSession(expectedToken));
+  return res.json({ success: true });
+});
+
+app.post("/api/firestore-usage/session/close", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.clearCookie(FIRESTORE_USAGE_SESSION_COOKIE, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/api/firestore-usage"
+  });
+  return res.json({ success: true });
+});
+
+app.get("/api/firestore-usage", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const projectId = process.env.FIRESTORE_USAGE_PROJECT_ID?.trim() || "";
+  const expectedToken = process.env.FIRESTORE_USAGE_ADMIN_TOKEN || "";
+  if (!projectId || expectedToken.length < 32) {
+    return res.status(503).json({
+      error: "Project-wide Firestore metrics are not configured on the server."
+    });
+  }
+  if (!hasValidFirestoreUsageSession(req, expectedToken)) {
+    return res.status(401).json({ error: "Metrics session expired; reconnect to view project-wide counts." });
+  }
+
+  const now = new Date();
+  const dataThrough = new Date(Date.now() - 5 * 60 * 1000);
+  const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const endTime = dataThrough > periodStart ? dataThrough : now;
+
+  try {
+    const auth = new GoogleAuth({
+      scopes: ["https://www.googleapis.com/auth/monitoring.read"]
+    });
+    const client = await auth.getClient();
+    const [reads, writes, deletes] = await Promise.all([
+      getFirestoreMetricCount(
+        client,
+        projectId,
+        "firestore.googleapis.com/document/read_ops_count",
+        periodStart.toISOString(),
+        endTime.toISOString()
+      ),
+      getFirestoreMetricCount(
+        client,
+        projectId,
+        "firestore.googleapis.com/document/write_ops_count",
+        periodStart.toISOString(),
+        endTime.toISOString()
+      ),
+      getFirestoreMetricCount(
+        client,
+        projectId,
+        "firestore.googleapis.com/document/delete_ops_count",
+        periodStart.toISOString(),
+        endTime.toISOString()
+      )
+    ]);
+
+    setFirestoreUsageSessionCookie(res, createFirestoreUsageSession(expectedToken));
+    return res.json({
+      reads,
+      writes,
+      deletes,
+      readLimit: parseFirestoreUsageLimit(process.env.FIRESTORE_USAGE_READ_LIMIT || "50000"),
+      writeLimit: parseFirestoreUsageLimit(process.env.FIRESTORE_USAGE_WRITE_LIMIT || "20000"),
+      deleteLimit: parseFirestoreUsageLimit(process.env.FIRESTORE_USAGE_DELETE_LIMIT || "20000"),
+      periodStartUtc: periodStart.toISOString(),
+      dataThroughUtc: endTime.toISOString(),
+      retrievedAtUtc: now.toISOString()
+    });
+  } catch (error) {
+    console.error(
+      "[Firestore Usage Metrics Error]",
+      error instanceof Error ? error.name : "Unknown error"
+    );
+    return res.status(502).json({
+      error: "Could not retrieve project-wide metrics. Verify Cloud Monitoring API and server Monitoring Viewer access."
+    });
+  }
 });
 
 // Endpoint to check email dispatch status and SMTP availability

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserPlus, Building2, User, Phone, MapPin, DollarSign, Check } from 'lucide-react';
 import { Party, Salesperson, BranchLocation, AuthUser } from '../types';
-import { isUnwantedSalesCenter } from '../utils/branchAccess';
+import { isMarketingOfficer, isUnwantedSalesCenter } from '../utils/branchAccess';
 
 interface AddPartyModalProps {
   isOpen: boolean;
@@ -39,7 +39,7 @@ export const AddPartyModal: React.FC<AddPartyModalProps> = ({
       setName(initialPartyName || '');
       setAddress('');
       setPhone('');
-      setSelectedSpCode(salespersons[0]?.code || '');
+      setSelectedSpCode(salespersons.find(isMarketingOfficer)?.code || '');
       setSelectedBranchId(defaultBranchId || branches[0]?.id || '');
       setOpeningBalance('');
       setError('');
@@ -59,7 +59,7 @@ export const AddPartyModal: React.FC<AddPartyModalProps> = ({
       return;
     }
 
-    const matchedSp = salespersons.find((s) => s.code === selectedSpCode);
+    const matchedSp = salespersons.find((s) => s.code === selectedSpCode && isMarketingOfficer(s));
     const matchedBranch = branches.find((b) => b.id === selectedBranchId);
 
     const newParty: Party = {
@@ -189,7 +189,7 @@ export const AddPartyModal: React.FC<AddPartyModalProps> = ({
                   className="w-full p-2.5 pl-9 bg-[#061520] border border-cyan-500/30 rounded-xl text-white font-semibold focus:border-cyan-400 focus:outline-none cursor-pointer"
                 >
                   <option value="">Unassigned</option>
-                  {salespersons.map((s) => (
+                  {salespersons.filter(isMarketingOfficer).map((s) => (
                     <option key={s.id || s.code} value={s.code}>
                       {s.code ? `[${s.code}] ` : ''}{s.name}
                     </option>

@@ -72,7 +72,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
             </div>
 
             <div className="text-right">
-              <span className="inline-block px-3 py-1 bg-slate-900 text-white font-bold text-xs uppercase tracking-wider rounded">
+              <span className={`inline-block px-3 py-1 bg-slate-900 text-white font-bold text-xs uppercase tracking-wider rounded ${type === 'challan' ? 'delivery-challan-badge challan-badge' : ''}`}>
                 {type === 'challan' ? 'DELIVERY CHALLAN' : 'TAX INVOICE'}
               </span>
               <p className="text-xs font-mono font-bold text-slate-900 mt-2">

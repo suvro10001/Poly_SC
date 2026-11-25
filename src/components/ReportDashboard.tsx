@@ -18,7 +18,8 @@ import {
   getUserBranch,
   getUserLoginFilters,
   cleanBranchName,
-  findPartyForBill
+  findPartyForBill,
+  isMarketingOfficer
 } from '../utils/branchAccess';
 import { Printer, Search, Calendar, Building2, Users, Landmark, Wallet, DollarSign, BarChart3, Filter, FileSpreadsheet, Download, RefreshCw, ChevronDown, ChevronRight, ChevronLeft, ArrowLeft, X, Package, ArrowUpRight, TrendingUp, Coins, Receipt, Building, PieChart, Award, Plus, Trash2, Eye, Truck, Lock, CheckCircle2, ShieldCheck, Sparkles, Check, UserCheck, RotateCcw, Clock, Layers, Edit3 } from 'lucide-react';
 import { formatDateDDMMYY, parseDateToISO, getLastDateOfYearFromDate } from '../utils/dateUtils';
@@ -156,6 +157,10 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
   const visibleSalespersons = useMemo(() => {
     return filterSalespersonsForUser(salespersons, currentUser, effectiveBranches);
   }, [salespersons, currentUser, effectiveBranches]);
+  const visibleMarketingOfficers = useMemo(
+    () => visibleSalespersons.filter(isMarketingOfficer),
+    [visibleSalespersons]
+  );
 
   // 4. Strictly isolate collections for the current user and sales center
   const collections = useMemo(() => {
@@ -398,8 +403,8 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
     if (selectedPartyId) return 'All';
     const init = getUserLoginFilters(currentUser, salespersons, effectiveBranches);
     if (init.salesmanName) return init.salesmanName;
-    if (visibleSalespersons.length === 1 && !isSuperAdminOrAgm(currentUser) && !hasBranchWideAccess(currentUser, salespersons, effectiveBranches)) {
-      return visibleSalespersons[0].name;
+    if (visibleMarketingOfficers.length === 1 && !isSuperAdminOrAgm(currentUser) && !hasBranchWideAccess(currentUser, salespersons, effectiveBranches)) {
+      return visibleMarketingOfficers[0].name;
     }
     try {
       const saved = localStorage.getItem('polycables_report_marketing_person');
@@ -449,10 +454,10 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
     }
   }, [currentUser, isAdminUserRole]);
 
-  // Cascading Filter: Filter salespersons strictly by selected Sales Center (selectedEntity)
+  // Cascading Filter: Filter marketing officers strictly by selected Sales Center (selectedEntity)
   const centerFilteredSalespersons = useMemo(() => {
-    return filterSalespersonsByBranch(visibleSalespersons, selectedEntity, effectiveBranches, currentUser);
-  }, [visibleSalespersons, selectedEntity, effectiveBranches, currentUser]);
+    return filterSalespersonsByBranch(visibleMarketingOfficers, selectedEntity, effectiveBranches, currentUser);
+  }, [visibleMarketingOfficers, selectedEntity, effectiveBranches, currentUser]);
 
   // Helper to check if a party belongs to the currently selected Sales Center (selectedEntity)
   const doesPartyBelongToSelectedCenter = useCallback((p: Party, targetCenter: string): boolean => {
@@ -518,7 +523,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
     }
     if (selectedMarketingPerson && selectedMarketingPerson !== 'All') {
       const spLower = selectedMarketingPerson.trim().toLowerCase();
-      const spObj = salespersons.find(
+      const spObj = visibleMarketingOfficers.find(
         (s) => s.name.trim().toLowerCase() === spLower || (s.code && s.code.toLowerCase() === spLower)
       );
       const spCodeLower = (spObj?.code || '').toLowerCase();
@@ -534,7 +539,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
       });
     }
     return list;
-  }, [parties, selectedMarketingPerson, selectedEntity, salespersons, doesPartyBelongToSelectedCenter]);
+  }, [parties, selectedMarketingPerson, selectedEntity, visibleMarketingOfficers, doesPartyBelongToSelectedCenter]);
 
   // Auto-reset selectedMarketingPerson if not in centerFilteredSalespersons
   useEffect(() => {
@@ -4453,7 +4458,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
               <div className="overflow-x-auto">
                 <table
                   style={{ fontSize: reportFontSize }}
-                  className="w-full text-black border-collapse border border-black font-sans"
+                  className="bank-report-table w-full text-black border-collapse border border-black font-sans"
                 >
                   <thead>
                     <tr className="border-b border-black bg-slate-50 font-bold uppercase text-[11px]">
@@ -4721,7 +4726,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
                 </div>
               </div>
 
-              <table className="w-full text-xs text-black border-collapse border border-black">
+              <table className="bank-report-table w-full text-xs text-black border-collapse border border-black">
                 <thead>
                   <tr className="border-b border-black bg-slate-50 font-bold uppercase text-[11px]">
                     <th contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black text-center w-10">SL</th>
@@ -4811,7 +4816,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
                           <td contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black text-center font-mono">{idx + 1}</td>
                           <td contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black text-center font-mono">{formatDateDDMMYY(item.date)}</td>
                           <td contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black font-bold font-mono text-slate-900">
-                            {getBankAndAccountShortTag(item.bankName, item.accountName, item.shortTag)}
+                            {item.shortTag || getBankAndAccountShortTag(item.bankName, item.accountName)}
                           </td>
                           <td contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black font-semibold text-slate-900">
                             {item.partyName}
@@ -4927,7 +4932,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
                 </div>
               </div>
 
-              <table className="w-full text-xs text-black border-collapse border border-black">
+              <table className="bank-report-table w-full text-xs text-black border-collapse border border-black">
                 <thead>
                   <tr className="border-b border-black bg-slate-50 font-bold uppercase text-[11px]">
                     <th contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black text-center w-12">SL</th>
@@ -4963,7 +4968,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
                         <td contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black text-center font-mono">{formatDateDDMMYY(item.date)}</td>
                         <td contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black text-slate-900 font-mono font-bold">
                           <span className="inline-flex items-center px-2 py-0.5 rounded font-mono font-black text-xs bg-slate-900 text-amber-300 border border-slate-700 shadow-2xs">
-                            {getBankAndAccountShortTag(item.bankName, item.accountName, item.shortTag)}
+                            {item.shortTag || getBankAndAccountShortTag(item.bankName, item.accountName)}
                           </span>
                         </td>
                         <td contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 text-right font-bold font-mono">
@@ -5012,7 +5017,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
                 </div>
               </div>
 
-              <table className="w-full text-xs text-black border-collapse border border-black">
+              <table className="bank-report-table w-full text-xs text-black border-collapse border border-black">
                 <thead>
                   <tr className="border-b border-black bg-slate-50 font-bold uppercase text-[11px]">
                     <th contentEditable={isLiveEditable} suppressContentEditableWarning={true} className="p-1.5 border-r border-black text-center w-12">SL</th>
@@ -6007,7 +6012,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
 
                     {/* Main Party Breakdown Table */}
                     <div className="overflow-x-auto">
-                      <table className="w-full text-xs text-black border-collapse border border-black font-sans">
+                      <table className="bank-report-table w-full text-xs text-black border-collapse border border-black font-sans">
                         <thead>
                           <tr className="border-b border-black bg-slate-100 font-bold uppercase text-[10px]">
                             <th className="p-1.5 border-r border-black text-center w-8">SL</th>
@@ -6108,7 +6113,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
                           Date: {formatDateDDMMYY(startDate)} to {formatDateDDMMYY(endDate)}
                         </div>
                       </div>
-                      <table className="w-full text-xs text-black border-collapse border border-black">
+                      <table className="bank-report-table w-full text-xs text-black border-collapse border border-black">
                         <thead>
                           <tr className="border-b border-black bg-slate-50 font-bold uppercase text-[11px]">
                             <th className="p-1.5 border-r border-black text-center w-12">SL</th>
@@ -6138,7 +6143,9 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
                               <tr key={item.id + idx} className="border-b border-slate-300">
                                 <td className="p-1.5 border-r border-black text-center font-mono">{idx + 1}</td>
                                 <td className="p-1.5 border-r border-black text-center font-mono">{formatDateDDMMYY(item.date)}</td>
-                                <td className="p-1.5 border-r border-black font-bold font-mono text-xs">{getBankAndAccountShortTag(item.bankName, item.accountName, item.shortTag)}</td>
+                                <td className="p-1.5 border-r border-black font-bold font-mono text-xs">
+                                  {item.shortTag || getBankAndAccountShortTag(item.bankName, item.accountName)}
+                                </td>
                                 <td className="p-1.5 text-right font-mono font-bold">{formatAmount(item.amount)}</td>
                               </tr>
                             ))
@@ -6166,7 +6173,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
                           Cash Received
                         </div>
                       </div>
-                      <table className="w-full text-xs text-black border-collapse border border-black">
+                      <table className="bank-report-table w-full text-xs text-black border-collapse border border-black">
                         <thead>
                           <tr className="border-b border-black bg-slate-50 font-bold uppercase text-[11px]">
                             <th className="p-1.5 border-r border-black text-center w-12">SL</th>
@@ -6236,7 +6243,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
                 {/* 3. PARTY BANK DETAILS PREVIEW TABLE */}
                 {activeReportTab === 'party_bank_details' && (
                   <div>
-                    <table className="w-full text-xs text-black border-collapse border border-black">
+                    <table className="bank-report-table w-full text-xs text-black border-collapse border border-black">
                       <thead>
                         <tr className="border-b border-black bg-slate-50 font-bold uppercase text-[11px]">
                           <th className="p-1.5 border-r border-black text-center w-10">SL</th>
@@ -6258,7 +6265,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
                               <tr key={item.id + idx} className="border-b border-slate-300">
                                 <td className="p-1.5 border-r border-black text-center font-mono">{idx + 1}</td>
                                 <td className="p-1.5 border-r border-black text-center font-mono">{formatDateDDMMYY(item.date)}</td>
-                                <td className="p-1.5 border-r border-black font-bold font-mono">{getBankAndAccountShortTag(item.bankName, item.accountName, item.shortTag)}</td>
+                                <td className="p-1.5 border-r border-black font-bold font-mono">{item.shortTag || getBankAndAccountShortTag(item.bankName, item.accountName)}</td>
                                 <td className="p-1.5 border-r border-black font-semibold">{item.partyName}</td>
                                 <td className="p-1.5 border-r border-black">{item.address}</td>
                                 <td className="p-1.5 text-right font-bold font-mono">{formatAmount(item.amount)}</td>

@@ -1764,31 +1764,6 @@ export const NotificationChatHub: React.FC<NotificationChatHubProps> = ({
                 )}
               </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('users')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer border transition-all whitespace-nowrap ${
-                  activeTab === 'users'
-                    ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400/60'
-                    : 'bg-[#061520]/80 text-slate-300 border-white/10 hover:text-white'
-                }`}
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>Users & Direct Chat ({directoryUsers.length})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('groups')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer border transition-all whitespace-nowrap ${
-                  activeTab === 'groups'
-                    ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400/60'
-                    : 'bg-[#061520]/80 text-slate-300 border-white/10 hover:text-white'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>Groups & Team Calls ({visibleGroups.length})</span>
-              </button>
             </div>
 
             {/* Hub Body */}

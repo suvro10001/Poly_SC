@@ -3427,10 +3427,10 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
           {/* THE DOCUMENT PAPER / PAD CANVAS (Matching Bill page 1-to-1) */}
           {/* ========================================================================= */}
           <div className="bill-paper-dimensions max-w-[7.2in] w-full mx-auto bg-white text-black pt-0 px-3 pb-4 sm:px-[0.28in] sm:pb-[0.28in] shadow-2xl rounded-2xl border border-slate-300 min-h-[10in] font-sans transition-all relative print:rounded-none print:border-none print:shadow-none print:w-[7.2in] print:max-w-[7.2in] print:min-h-[10in] print:pt-0 print:px-[0.28in] print:pb-[0.28in]">
-            {/* Top 1.5" strictly reserved for Company Logo */}
+            {/* Keep only 0.5" for the company logo so the challan starts higher on paper. */}
             <div className="text-center pb-0 space-y-0 text-black font-sans leading-tight pt-0">
               <div
-                style={{ height: '1.5in', minHeight: '1.5in' }}
+                style={{ height: '0.5in', minHeight: '0.5in' }}
                 className={`flex items-center justify-center ${
                   challanPadHeaderMode !== 'plain' ? 'hide-on-preprinted-pad invisible opacity-0' : ''
                 }`}
@@ -3462,7 +3462,7 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
               ) : null}
 
               <div className="pt-1.5 pb-1">
-                <span className="inline-block bg-slate-950 text-white text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-0.5 rounded-full shadow-xs">
+                <span className="delivery-challan-badge challan-badge inline-block bg-slate-950 text-white text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-0.5 rounded-full shadow-xs">
                   DELIVERY CHALLAN
                 </span>
               </div>
@@ -4971,7 +4971,7 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
                 <p className="font-bold text-xs text-black">
                   {company.address} • Mob: {company.phone}
                 </p>
-                <div className="inline-block mt-1 px-3 py-0.5 bg-white text-black border-2 border-black font-black text-xs uppercase tracking-widest rounded print:bg-transparent print:text-black print:border-black delivery-challan-badge">
+                <div className="delivery-challan-badge challan-badge inline-block mt-1 px-3 py-0.5 bg-slate-950 text-white border-2 border-slate-950 font-black text-xs uppercase tracking-widest rounded">
                   DELIVERY CHALLAN
                 </div>
               </div>
@@ -5580,10 +5580,10 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
               >
                   <div className="relative flex flex-col justify-between h-full overflow-hidden">
                     <div className="relative z-10 space-y-1.5">
-                      {/* Header: Top 1.5" strictly reserved for Company Logo */}
+                      {/* Keep only 0.5" for the company logo so the challan starts higher on paper. */}
                       <div className="text-center pb-0 space-y-0 text-black font-sans leading-tight pt-0">
                         <div
-                          style={{ height: '1.5in', minHeight: '1.5in' }}
+                          style={{ height: '0.5in', minHeight: '0.5in' }}
                           className={`flex items-center justify-center ${
                             challanPadHeaderMode !== 'plain' ? 'hide-on-preprinted-pad invisible opacity-0' : ''
                           }`}
@@ -5612,7 +5612,7 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
 
                         {/* Delivery Challan Badge */}
                         <div className="pt-1 pb-0.5">
-                          <span className="inline-block bg-white text-black border-2 border-black px-4 py-0.5 rounded text-xs font-black tracking-widest uppercase print:bg-transparent print:text-black print:border-black delivery-challan-badge">
+                          <span className="delivery-challan-badge challan-badge inline-block bg-slate-950 text-white border-2 border-slate-950 px-4 py-0.5 rounded text-xs font-black tracking-widest uppercase">
                             DELIVERY CHALLAN
                           </span>
                         </div>

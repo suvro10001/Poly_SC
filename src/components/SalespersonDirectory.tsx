@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Salesperson, Party, BranchLocation, BranchType, AuthUser, USER_DESIGNATIONS } from '../types';
-import { isAccountsOrStaff, isMarketingOfficer, cleanBranchName, getAllAdmins, AdminClusterInfo, isStrictSuperAdmin, filterBranchesForUser, getAdminBranches, isDefaultAdmin, isProtectedSalesCenter, formatSalesCenterDisplayName, isUnwantedSalesCenter, isSuvroAdmin } from '../utils/branchAccess';
+import { isAccountsOrStaff, isMarketingOfficer, isAdminSalesperson, cleanBranchName, getAllAdmins, AdminClusterInfo, isStrictSuperAdmin, filterBranchesForUser, getAdminBranches, isDefaultAdmin, isProtectedSalesCenter, formatSalesCenterDisplayName, isUnwantedSalesCenter, isSuvroAdmin } from '../utils/branchAccess';
 import { moveToTrash } from '../utils/trashHelper';
 import {
   UserCheck,
@@ -925,8 +925,8 @@ export const SalespersonDirectory: React.FC<SalespersonDirectoryProps> = ({
         (sp.designation && sp.designation.toLowerCase().includes(q)) ||
         (sp.branchName && sp.branchName.toLowerCase().includes(q));
 
-      const isMkt = sp.userType === 'marketing' || (sp.role && sp.role.toLowerCase().includes('marketing'));
-      const roleStr = sp.role || (isMkt ? 'Marketing Officer' : 'Showroom Staff');
+      const isMkt = isMarketingOfficer(sp);
+      const roleStr = isAdminSalesperson(sp) ? 'Administrator' : sp.role || (isMkt ? 'Marketing Officer' : 'Showroom Staff');
 
       const matchRole =
         userRoleFilter === 'all' ||
@@ -2216,8 +2216,11 @@ export const SalespersonDirectory: React.FC<SalespersonDirectoryProps> = ({
                       );
                     }
 
-                    const isMarketing = sp.userType === 'marketing' || (sp.role && sp.role.toLowerCase().includes('marketing'));
-                    const displayRole = (sp.role === 'Showroom Staff' ? 'Sales Center Staff' : sp.role === 'Showroom In-Charge' ? 'Sales Center In-Charge' : sp.role) || (isMarketing ? 'Marketing Officer' : 'Sales Center Staff');
+                    const isAdmin = isAdminSalesperson(sp);
+                    const isMarketing = isMarketingOfficer(sp);
+                    const displayRole = isAdmin
+                      ? 'Administrator'
+                      : (sp.role === 'Showroom Staff' ? 'Sales Center Staff' : sp.role === 'Showroom In-Charge' ? 'Sales Center In-Charge' : sp.role) || (isMarketing ? 'Marketing Officer' : 'Sales Center Staff');
                     const isJustCreated = newlyCreatedUserId && (sp.id === newlyCreatedUserId || sp.code === newlyCreatedUserId);
 
                     return (

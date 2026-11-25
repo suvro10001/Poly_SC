@@ -39,13 +39,13 @@ import { formatDateDDMMYY } from '../utils/dateUtils';
 import {
   recordDeletedEntityId,
   recordDeletedEntityIds,
-  unrecordDeletedEntityId,
-  unrecordDeletedEntityIds,
+  unrecordDeletedIdsLocally,
   getGlobalDeletedIds,
   removeIdsFromAllTrashStorages,
   getClientSyncId
 } from '../utils/deletedTracker';
 import { safeSetStorageItem, idbSaveFailoverData } from '../utils/indexedDbStorage';
+import { getPriceListSnapshots, savePriceListSnapshots } from '../utils/priceCircularHelper';
 import { BankLogoBadge } from './BankAndAccountDirectory';
 
 interface TrashProps {
@@ -548,12 +548,19 @@ export const Trash: React.FC<TrashProps> = ({
   const restoreEntities = (itemsToRestore: TrashedItemWrapper[]) => {
     if (!itemsToRestore || itemsToRestore.length === 0) return;
 
-    const ids = itemsToRestore.map((x) => x.id);
+    const ids = Array.from(
+      new Set(
+        itemsToRestore
+          .flatMap((item) => [item.id, item.raw?.id, item.raw?.header?.billNo])
+          .map((id) => String(id || '').trim())
+          .filter(Boolean)
+      )
+    );
     const nowIso = new Date().toISOString();
     try {
       localStorage.setItem('polycables_last_restore_time', String(Date.now()));
     } catch {}
-    unrecordDeletedEntityIds(ids);
+    unrecordDeletedIdsLocally(ids);
     removeIdsFromAllTrashStorages(ids);
 
     const cloudPatch: Record<string, any> = {
@@ -584,6 +591,7 @@ export const Trash: React.FC<TrashProps> = ({
             const next = mergeRestored(storedBills, restoredList);
             setStoredBills((prev: any[]) => mergeRestored(prev, restoredList));
             cloudPatch.storedBills = next;
+            cloudPatch._replaceStoredBills = true;
             safeSetStorageItem('polycables_stored_bills', JSON.stringify(next), next);
             idbSaveFailoverData('polycables_stored_bills', next).catch(() => {});
           }
@@ -620,9 +628,25 @@ export const Trash: React.FC<TrashProps> = ({
           const nextSpecials = next.filter((i: any) => i.isSpecialItem);
           cloudPatch.specialItems = nextSpecials;
           cloudPatch._itemsCleared = false;
+          cloudPatch._replaceItems = true;
           try { localStorage.removeItem('polycables_items_cleared'); } catch {}
           safeSetStorageItem('polycables_items', JSON.stringify(next), next);
           safeSetStorageItem('polycables_special_items', JSON.stringify(nextSpecials), nextSpecials);
+
+          const snapshots = getPriceListSnapshots();
+          const activeSnapshotIndex = snapshots.findIndex((snapshot) => snapshot.isActive);
+          const targetSnapshotIndex = activeSnapshotIndex >= 0 ? activeSnapshotIndex : snapshots.length === 1 ? 0 : -1;
+          if (targetSnapshotIndex >= 0) {
+            const activeSnapshot = snapshots[targetSnapshotIndex];
+            const snapshotItems = mergeRestored(activeSnapshot.items || [], restoredList);
+            const nextSnapshots = snapshots.map((snapshot, index) =>
+              index === targetSnapshotIndex
+                ? { ...snapshot, items: snapshotItems, itemCount: snapshotItems.length, updatedAt: nowIso }
+                : snapshot
+            );
+            cloudPatch.priceSnapshots = savePriceListSnapshots(nextSnapshots);
+            cloudPatch._replacePriceSnapshots = true;
+          }
           break;
         }
         case 'parties': {

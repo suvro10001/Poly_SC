@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Salesperson } from '../types';
 import { Shield, Check, Users, Save } from 'lucide-react';
+import { isMarketingOfficer } from '../utils/branchAccess';
 
 interface UserRoleMenuPermissionsSettingProps {
   salespersons: Salesperson[];
@@ -58,15 +59,12 @@ export const INCHARGE_STAFF_ACCOUNTS_DEFAULT_MENUS = [
 
 function getDefaultMenusForSp(sp?: Salesperson | null): string[] {
   if (!sp) return ALL_MENUS.map(m => m.id);
-  const role = (sp.role || '').toLowerCase();
-  const desig = (sp.designation || '').toLowerCase();
-  const userType = (sp.userType || '').toLowerCase();
-
-  const isOfficer = userType === 'marketing' || role.includes('marketing') || role.includes('officer') || desig.includes('marketing') || desig.includes('officer');
-  if (isOfficer) {
+  if (isMarketingOfficer(sp)) {
     return MARKETING_OFFICER_DEFAULT_MENUS;
   }
 
+  const role = (sp.role || '').toLowerCase();
+  const desig = (sp.designation || '').toLowerCase();
   const isInChargeOrStaff = sp.isInCharge || role.includes('in-charge') || role.includes('incharge') || role.includes('account') || role.includes('staff') || desig.includes('in-charge') || desig.includes('incharge') || desig.includes('account') || desig.includes('staff');
   if (isInChargeOrStaff) {
     return INCHARGE_STAFF_ACCOUNTS_DEFAULT_MENUS;

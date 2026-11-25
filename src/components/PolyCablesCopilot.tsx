@@ -19,8 +19,7 @@ import {
 } from 'lucide-react';
 import { StoredBill, Party, Item, CollectionMR, BankDeposit, Requisition, DeliveryChallan, FactoryImportChallan, AuthUser } from '../types';
 import { getGlobalDeletedIds, recordDeletedEntityIds } from '../utils/deletedTracker';
-import { db } from '../firebase';
-import { deleteDoc, doc } from 'firebase/firestore';
+import { db, deleteDoc, doc } from '../firebase';
 import { isSuvroAdmin } from '../utils/branchAccess';
 
 interface PolyCablesCopilotProps {

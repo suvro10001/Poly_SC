@@ -25,6 +25,7 @@ import { CollectionMR, BankDeposit, Party, Salesperson, BranchLocation, AuthUser
 import { getBankShortCode, getAccountShortCode, generateDisplayTag, resolveFullBankName, resolveFullAccountName, BankLogoBadge } from './BankAndAccountDirectory';
 import { parseExcelDateToISO, parseExcelAmount, isExcelDateValue } from './ExpenseManager';
 import { computeNextSalesCenterMrNo, resolveEntityToSalesCenter } from '../utils/mrNumberHelper';
+import { isMarketingOfficer } from '../utils/branchAccess';
 import { DateInputWithPicker } from './DateInputWithPicker';
 
 export interface ImportedRowItem {
@@ -1043,7 +1044,7 @@ const CollectionExcelImportModalContent: React.FC<CollectionExcelImportModalProp
                             <select
                               value={r.marketingPerson}
                               onChange={(e) => {
-                                const sp = salespersons.find((s) => s.name === e.target.value);
+                                const sp = salespersons.find((s) => s.name === e.target.value && isMarketingOfficer(s));
                                 updateRow(r.id, {
                                   marketingPerson: e.target.value,
                                   salesmanCode: sp?.code || '',
@@ -1053,12 +1054,12 @@ const CollectionExcelImportModalContent: React.FC<CollectionExcelImportModalProp
                               className="w-full p-1 bg-slate-900 border border-slate-700 rounded-lg text-white font-medium text-xs focus:border-teal-500 focus:outline-none cursor-pointer"
                             >
                               <option value="">Unassigned</option>
-                              {salespersons.map((s) => (
+                              {salespersons.filter(isMarketingOfficer).map((s) => (
                                 <option key={s.id || s.code} value={s.name}>
                                   {s.code ? `[${s.code}] ` : ''}{s.name}
                                 </option>
                               ))}
-                              {r.marketingPerson && !salespersons.some((s) => s.name === r.marketingPerson) && (
+                              {r.marketingPerson && !salespersons.some((s) => s.name === r.marketingPerson && isMarketingOfficer(s)) && (
                                 <option value={r.marketingPerson}>{r.marketingPerson} (From Excel)</option>
                               )}
                             </select>
@@ -1302,7 +1303,7 @@ const CollectionExcelImportModalContent: React.FC<CollectionExcelImportModalProp
                     className="w-full p-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:border-teal-500 focus:outline-none cursor-pointer"
                   >
                     <option value="">Unassigned</option>
-                    {salespersons.map((s) => (
+                    {salespersons.filter(isMarketingOfficer).map((s) => (
                       <option key={s.id || s.code} value={s.code}>
                         {s.code ? `[${s.code}] ` : ''}{s.name}
                       </option>

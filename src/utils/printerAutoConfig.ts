@@ -144,6 +144,10 @@ export function autoConfigurePrintStyles(
   const transformCss = `translate(${offsetXmm}mm, ${offsetYmm}mm) scale(${scale})`;
 
   const effectiveMarginsMm = documentType === 'slip_pad' ? 0 : marginsMm;
+  const pageBreakBehavior =
+    documentType === 'bill' || documentType === 'challan' ? 'avoid' : 'auto';
+  const breakBehavior =
+    documentType === 'bill' || documentType === 'challan' ? 'avoid-page' : 'auto';
 
   existingStyle.textContent = `
     @page {
@@ -286,8 +290,12 @@ export function autoConfigurePrintStyles(
         transform: ${offsetXmm !== 0 || offsetYmm !== 0 || scale !== 1 ? transformCss : 'none'} !important;
         box-shadow: none !important;
         border: none !important;
-        page-break-inside: auto !important;
-        break-inside: auto !important;
+        page-break-before: ${pageBreakBehavior} !important;
+        page-break-after: ${pageBreakBehavior} !important;
+        page-break-inside: ${pageBreakBehavior} !important;
+        break-before: ${breakBehavior} !important;
+        break-after: ${breakBehavior} !important;
+        break-inside: ${breakBehavior} !important;
         overflow: visible !important;
       }
 

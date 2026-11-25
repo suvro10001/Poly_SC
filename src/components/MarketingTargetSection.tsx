@@ -22,6 +22,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { parseDateToISO } from '../utils/dateUtils';
+import { isMarketingOfficer } from '../utils/branchAccess';
 
 interface MarketingTargetSectionProps {
   salespersons: Salesperson[];
@@ -55,27 +56,7 @@ export const MarketingTargetSection: React.FC<MarketingTargetSectionProps> = ({
 }) => {
   // Filter ONLY actual marketing persons (exclude accountants, managers, admins, showroom in-charge/staff, general users)
   const marketingPersons = useMemo(() => {
-    return salespersons.filter((sp) => {
-      if (sp.userType === 'marketing') return true;
-      if (sp.userType === 'user') return false;
-
-      const roleLower = (sp.role || '').toLowerCase();
-      const designationLower = ((sp as any).designation || '').toLowerCase();
-      const isExcluded = [
-        'accountant',
-        'manager',
-        'admin',
-        'office staff',
-        'showroom in-charge',
-        'in-charge',
-        'approver',
-        'auditor',
-        'staff',
-        'user'
-      ].some((r) => roleLower.includes(r) || designationLower.includes(r));
-
-      return !isExcluded;
-    });
+    return salespersons.filter(isMarketingOfficer);
   }, [salespersons]);
 
   // Local yearly targets store with localStorage sync

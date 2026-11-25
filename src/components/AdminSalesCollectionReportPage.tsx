@@ -56,6 +56,7 @@ import {
   getAllAdmins,
   getUserBranch,
   isUnwantedSalesCenter,
+  isMarketingOfficer,
   AdminClusterInfo
 } from '../utils/branchAccess';
 import { sortItemsCategorySerialWise } from '../utils/searchHelper';
@@ -291,24 +292,7 @@ export const AdminSalesCollectionReportPage: React.FC<AdminSalesCollectionReport
   // Filter Salespersons based on selected Admin and selected Branch
   // Rule: Do NOT show Admin names in Marketing Officer lists/tab. All Admin names show in Admin-Wise Statement tab.
   const branchFilteredSalespersons = useMemo(() => {
-    let pool = localSalespersons.filter((sp) => {
-      const roleLower = (sp.role || '').toLowerCase();
-      const nameLower = (sp.name || '').toLowerCase();
-      const usernameLower = (sp.username || '').toLowerCase();
-      const codeLower = (sp.code || '').toLowerCase();
-      const isAdminUser = Boolean(
-        sp.isSuperAdmin ||
-        roleLower.includes('admin') ||
-        roleLower === 'agm' ||
-        usernameLower.includes('admin') ||
-        nameLower.includes('admin') ||
-        codeLower === '111' ||
-        codeLower === 'suvroadmin' ||
-        codeLower.includes('adm-') ||
-        (Array.isArray(sp.assignedBranchIds) && sp.assignedBranchIds.length > 0)
-      );
-      return !isAdminUser;
-    });
+    let pool = localSalespersons.filter(isMarketingOfficer);
 
     if (!isSuperAdmin && !isAccountsAdminUser) {
       pool = filterSalespersonsByBranch(pool, 'ALL', allowedUserBranches, currentUser);
@@ -1097,7 +1081,7 @@ export const AdminSalesCollectionReportPage: React.FC<AdminSalesCollectionReport
 
       // Marketing personnel stationed under this admin's sales centers
       const clusterOfficers = localSalespersons.filter((sp) => {
-        if (sp.role?.toLowerCase() === 'admin' || sp.isSuperAdmin) return false;
+        if (!isMarketingOfficer(sp)) return false;
         const spBId = (sp.branchId || '').toLowerCase().trim();
         const spClean = cleanBranchName(sp.branchName || '').toLowerCase().trim();
         const spCode = (sp.code || '').trim();

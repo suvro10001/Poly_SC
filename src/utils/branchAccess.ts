@@ -816,38 +816,70 @@ export function hasUserTarget(sp?: Salesperson | null): boolean {
   return false;
 }
 
-export function isMarketingOfficer(sp?: Salesperson | null): boolean {
+export function isAdminSalesperson(sp?: Salesperson | null): boolean {
   if (!sp) return false;
-  if (sp.userType === 'marketing') return true;
-  const role = (sp.role || '').toLowerCase();
-  const desig = (sp.designation || '').toLowerCase();
+  const username = (sp.username || '').trim().toLowerCase();
+  const name = (sp.name || '').trim().toLowerCase();
+  const code = (sp.code || '').trim().toLowerCase();
+  const userType = String(sp.userType || '').trim().toLowerCase();
+
+  return (
+    isAnyAdmin(sp) ||
+    sp.isSuperAdmin === true ||
+    userType === 'admin' ||
+    code === '111' ||
+    code.startsWith('adm') ||
+    username.includes('admin') ||
+    /\badmin\b/.test(name)
+  );
+}
+
+export function isAdminMarketingLabel(
+  name?: string | null,
+  salespersons: Salesperson[] = []
+): boolean {
+  const cleanName = (name || '').trim().toLowerCase();
+  if (!cleanName) return false;
   if (
-    role.includes('marketing') ||
-    role.includes('representative') ||
-    role.includes('officer') ||
-    role.includes('sales') ||
-    role.includes('in-charge') ||
-    role.includes('incharge') ||
-    role.includes('manager') ||
-    desig.includes('marketing') ||
-    desig.includes('officer') ||
-    desig.includes('executive') ||
-    desig.includes('manager')
+    cleanName.includes('admin') ||
+    /\b(agm|director)\b/.test(cleanName)
   ) {
     return true;
   }
-  if (hasUserTarget(sp)) return true;
+  const matched = salespersons.find(
+    (sp) =>
+      [sp.name, sp.username, sp.code]
+        .some((value) => (value || '').trim().toLowerCase() === cleanName)
+  );
+  return Boolean(matched && isAdminSalesperson(matched));
+}
+
+export function isMarketingOfficer(sp?: Salesperson | null): boolean {
+  if (!sp) return false;
+  if (sp.isActive === false || (sp as any).isBlocked === true || isAdminSalesperson(sp)) return false;
+
+  const role = (sp.role || '').trim().toLowerCase();
+  const desig = (sp.designation || '').trim().toLowerCase();
+  const userType = String(sp.userType || '').trim().toLowerCase();
+  const roleAndDesignation = `${role} ${desig}`;
+
   if (
-    role === 'accountant' ||
-    role === 'showroom staff' ||
-    role === 'general user / staff' ||
-    role === 'cleaner' ||
-    role === 'peon' ||
-    role === 'office boy'
+    userType === 'user' ||
+    userType === 'factory' ||
+    sp.isInCharge === true ||
+    /\b(accountant|accounts|manager|in[\s-]?charge|factory|staff|cashier|storekeeper|approver|auditor|cleaner|peon|operator|hr)\b/.test(roleAndDesignation)
   ) {
     return false;
   }
-  return true;
+
+  if (userType === 'marketing') return true;
+
+  if (
+    /\b(marketing|representative|officer|sales|executive)\b/.test(roleAndDesignation)
+  ) {
+    return true;
+  }
+  return hasUserTarget(sp);
 }
 
 export function getUserBranch(

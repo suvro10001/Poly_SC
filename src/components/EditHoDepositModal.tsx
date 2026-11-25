@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { BankDeposit, Party, Salesperson } from '../types';
 import { formatDateDDMMYY, parseDateToISO } from '../utils/dateUtils';
+import { isMarketingOfficer } from '../utils/branchAccess';
 
 interface EditHoDepositModalProps {
   deposit: BankDeposit;
@@ -226,7 +227,7 @@ export const EditHoDepositModal: React.FC<EditHoDepositModalProps> = ({
                   className="w-full p-2.5 pl-7 border border-cyan-500/30 rounded-lg text-xs font-semibold text-white bg-[#061520] focus:ring-2 focus:ring-cyan-400 focus:outline-none"
                 >
                   <option value="Sonjoy Chowhan">Sonjoy Chowhan</option>
-                  {allSalespersons.map((sp) => (
+                  {allSalespersons.filter(isMarketingOfficer).map((sp) => (
                     <option key={sp.id} value={sp.name}>
                       {sp.name}
                     </option>

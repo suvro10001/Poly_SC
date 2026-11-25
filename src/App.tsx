@@ -1304,6 +1304,15 @@ export default function App() {
   };
 
   const handleLogout = useCallback(() => {
+    void fetch('/api/firestore-usage/session/close', {
+      method: 'POST',
+      credentials: 'same-origin',
+      keepalive: true
+    }).then((response) => {
+      if (!response.ok) console.error(`Unable to close Firestore metrics session (${response.status}).`);
+    }).catch((error: unknown) => {
+      console.error('Unable to close Firestore metrics session.', error);
+    });
     try {
       localStorage.removeItem('app_current_user');
       localStorage.removeItem('polycables_last_activity');

@@ -78,9 +78,9 @@ export const PrintPreviewBillInvoice: React.FC<PrintPreviewBillInvoiceProps> = (
           }}
         >
           <div>
-            {/* Top 1.5" strictly reserved for Company Logo */}
+            {/* Keep only 0.5" for the company logo so the document starts higher on paper. */}
             <div
-              style={{ height: '1.5in', minHeight: '1.5in' }}
+              style={{ height: '0.5in', minHeight: '0.5in' }}
               className={`flex items-center justify-center ${
                 !slipPadSettings.showCompanyLogo ? 'hide-on-preprinted-pad invisible opacity-0' : ''
               }`}
@@ -90,7 +90,7 @@ export const PrintPreviewBillInvoice: React.FC<PrintPreviewBillInvoiceProps> = (
               </h1>
             </div>
 
-            {/* Address, Title & Invoice Metadata start immediately after the 1.5" mark */}
+            {/* Address, title, and invoice metadata follow the compact logo area. */}
             <div className="border-b-2 border-slate-800 pb-3 mb-4">
               <div className="flex justify-between items-start gap-4">
                 <div>

@@ -4,6 +4,7 @@ import { defaultBranches } from '../data/defaultData';
 import { MnemonicLabel } from './MnemonicLabel';
 import { isSuperAdminOrAgm, isStrictSuperAdmin, isInCharge, isAccountsOrStaff, isFactoryUser, isAnyAdmin, isSuvroAdmin, cleanBranchName, getAdminBranches } from '../utils/branchAccess';
 import { PolyCablesLogo } from './PolyCablesLogo';
+import { FirestoreUsageCard } from './FirestoreUsageCard';
 import { FileSpreadsheet, Database, Building2, Layers, BarChart3, Plus, Users, RotateCcw, Trash2, Wallet, FolderKanban, ChevronDown, DollarSign, BookOpen, Menu, LogOut, User, Sparkles, Truck, TrendingUp, LayoutDashboard, Crown } from 'lucide-react';
 
 interface NavbarProps {
@@ -43,11 +44,22 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [isSalesOpen, setIsSalesOpen] = useState(false);
   const [showMobileQuickMenu, setShowMobileQuickMenu] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+  );
   const salesRef = useRef<HTMLDivElement>(null);
   const onlinePopoverRef = useRef<HTMLDivElement>(null);
   const mobileQuickMenuRef = useRef<HTMLDivElement>(null);
 
   const isAdminOnlyUser = Boolean(currentUser && isAnyAdmin(currentUser) && !isStrictSuperAdmin(currentUser));
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener('change', updateViewport);
+    return () => mediaQuery.removeEventListener('change', updateViewport);
+  }, []);
 
   const adminSalesCenterCount = useMemo(() => {
     let list = branches && branches.length > 0 ? branches : defaultBranches;
@@ -282,6 +294,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
 
+            {isStrictSuperAdmin(currentUser) && isMobileViewport && <FirestoreUsageCard compact />}
+
             {onLogout && (
               <button
                 type="button"
@@ -404,6 +418,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </span>
             )}
+            {isStrictSuperAdmin(currentUser) && !isMobileViewport && <FirestoreUsageCard compact />}
             {onLogout && (
               <button
                 type="button"

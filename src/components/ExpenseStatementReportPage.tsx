@@ -115,7 +115,7 @@ export const ExpenseStatementReportPage: React.FC<ExpenseStatementReportPageProp
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-200">
+          <table className="expense-statement-table w-full text-left text-sm text-slate-200">
             <thead className="bg-[#0c2638] text-xs font-semibold text-cyan-200 uppercase tracking-wider border-b border-cyan-500/30">
               <tr>
                 <th className="py-3 px-4">Date & Expense #</th>

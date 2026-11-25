@@ -38,7 +38,9 @@ import {
   isAnyAdmin,
   filterBranchesForUser,
   getUserBranch,
-  cleanBranchName
+  cleanBranchName,
+  isMarketingOfficer,
+  isAdminMarketingLabel
 } from '../utils/branchAccess';
 import { recordDeletedEntityId, getGlobalDeletedIds } from '../utils/deletedTracker';
 import { SalesCenterSearchFilter } from './SalesCenterSearchFilter';
@@ -246,7 +248,7 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
     Object.entries(monthlyAdjustments).forEach(([rawKey, rec]) => {
       if (!rec || !rec.partyName) return;
       const centerName = rec.salesCenter ? cleanBranchName(rec.salesCenter) : '';
-      const normKey = centerName ? buildAdjustmentKey(centerName, rec.monthKey || 'all') : rawKey;
+      const normKey = rec.adjustmentKey || rawKey || (centerName ? buildAdjustmentKey(centerName, rec.monthKey || 'all') : '');
       merged[normKey] = {
         ...rec,
         adjustmentKey: normKey,
@@ -276,7 +278,10 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
           mKey = 'all';
         }
       }
-      const normKey = centerName ? buildAdjustmentKey(centerName, mKey) : mKey;
+      const baseKey = centerName ? buildAdjustmentKey(centerName, mKey) : mKey;
+      const collectionId = String(col.id || '');
+      if (collectionId && Object.values(merged).some((adj) => adj.collectionId === collectionId)) return;
+      const normKey = collectionId ? `${baseKey}::${collectionId}` : baseKey;
       if (!merged[normKey]) {
         merged[normKey] = {
           adjustmentKey: normKey,
@@ -960,7 +965,7 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
       monthDisplay: string;
       nextMonth01: string;
       totalExpenses: number;
-      adjustment?: MonthlyAdjustmentRecord;
+      adjustments: MonthlyAdjustmentRecord[];
     };
     const rowMap = new Map<string, Row>();
     const todayMonth = new Date().toISOString().slice(0, 7);
@@ -989,7 +994,8 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
           monthKey: mKey,
           monthDisplay: meta.monthDisplay,
           nextMonth01: meta.nextMonth01,
-          totalExpenses: 0
+          totalExpenses: 0,
+          adjustments: []
         });
       }
       rowMap.get(rKey)!.totalExpenses += Number(exp.amount) || 0;
@@ -1006,7 +1012,7 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
       const rKey = `${centerKey}::${mKey}`;
       const existing = rowMap.get(rKey);
       if (existing) {
-        existing.adjustment = adj;
+        existing.adjustments.push(adj);
       } else if (!effectiveDateBounds.from && !effectiveDateBounds.to) {
         const q = searchTerm.trim().toLowerCase();
         const adjMatchesSearch =
@@ -1025,7 +1031,7 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
             monthDisplay: meta.monthDisplay,
             nextMonth01: meta.nextMonth01,
             totalExpenses: 0,
-            adjustment: adj
+            adjustments: [adj]
           });
         }
       }
@@ -1162,6 +1168,7 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
       remarks?: string;
       mrNo?: string;
       marketingPerson?: string;
+      addAnother?: boolean;
     }
   ) => {
     setPartyEntryError(null);
@@ -1193,7 +1200,7 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
     setTargetMonthExpenseTotal(expTotal);
 
     const compositeKey = existing?.adjustmentKey || buildAdjustmentKey(resolvedCenterName, effectiveMonth);
-    const savedExisting = effectiveAdjustments[compositeKey];
+    const savedExisting = existing?.addAnother ? undefined : effectiveAdjustments[compositeKey];
     setEditingAdjustmentKey(existing?.adjustmentKey || (savedExisting ? compositeKey : null));
 
     const [y, m] = effectiveMonth.split('-');
@@ -1243,16 +1250,26 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
       ? parties.find((p) => p.name.trim().toLowerCase() === initialPartyName.trim().toLowerCase())
       : undefined;
     const centerSp = allSalespersons.find(
-      (s) => cleanBranchName(s.branchName || '').toLowerCase() === resolvedCenterName.toLowerCase()
+      (s) =>
+        isMarketingOfficer(s) &&
+        cleanBranchName(s.branchName || '').toLowerCase() === resolvedCenterName.toLowerCase()
     );
-    const initialMarketingPerson =
-      activeExisting?.marketingPerson ||
-      matchedParty?.salespersonName ||
-      (matchedParty?.salesmanCode
-        ? allSalespersons.find((s) => s.code.toLowerCase() === matchedParty.salesmanCode?.toLowerCase())?.name
+    const partyMarketingPerson =
+      (matchedParty?.salespersonName && !isAdminMarketingLabel(matchedParty.salespersonName, allSalespersons)
+        ? matchedParty.salespersonName
         : undefined) ||
+      (matchedParty?.salesmanCode
+        ? allSalespersons.find(
+            (s) => s.code.toLowerCase() === matchedParty.salesmanCode?.toLowerCase() && isMarketingOfficer(s)
+          )?.name
+        : undefined);
+    const initialMarketingPerson =
+      (activeExisting?.marketingPerson && !isAdminMarketingLabel(activeExisting.marketingPerson, allSalespersons)
+        ? activeExisting.marketingPerson
+        : undefined) ||
+      partyMarketingPerson ||
       centerSp?.name ||
-      allSalespersons[0]?.name ||
+      allSalespersons.find(isMarketingOfficer)?.name ||
       '';
     const initialAddress = matchedParty?.address || resolvedCenterName;
 
@@ -1277,11 +1294,16 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
     const matched = parties.find((p) => p.name.trim().toLowerCase() === pName.trim().toLowerCase());
     if (matched) {
       if (matched.address) setEntryAddress(matched.address);
-      if (matched.salespersonName) {
+      const assignedSp = allSalespersons.find(
+        (s) =>
+          isMarketingOfficer(s) &&
+          ((matched.salesmanCode && s.code.toLowerCase() === matched.salesmanCode.toLowerCase()) ||
+            (matched.salespersonName && s.name.toLowerCase() === matched.salespersonName.toLowerCase()))
+      );
+      if (assignedSp) {
+        setEntryMarketingPerson(assignedSp.name);
+      } else if (matched.salespersonName && !isAdminMarketingLabel(matched.salespersonName, allSalespersons)) {
         setEntryMarketingPerson(matched.salespersonName);
-      } else if (matched.salesmanCode) {
-        const sp = allSalespersons.find((s) => s.code.toLowerCase() === matched.salesmanCode?.toLowerCase());
-        if (sp) setEntryMarketingPerson(sp.name);
       }
       if (!entrySalesCenter.trim() && matched.branchName) {
         setEntrySalesCenter(matched.branchName);
@@ -1346,13 +1368,12 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
       allSalespersons.find((s) => s.name.toLowerCase() === resolvedSpName.toLowerCase())?.code ||
       '';
 
-    const adjustmentKey = buildAdjustmentKey(cleanCenter, targetMonth);
-    const prevAdj =
-      (editingAdjustmentKey ? effectiveAdjustments[editingAdjustmentKey] : undefined) ||
-      effectiveAdjustments[adjustmentKey];
-
-    const newColId = prevAdj?.collectionId || `col-adj-${centerSlug}-${targetMonth}`;
-    const newDepId = prevAdj?.depositId || `dep-adj-${centerSlug}-${targetMonth}`;
+    const adjustmentBaseKey = buildAdjustmentKey(cleanCenter, targetMonth);
+    const prevAdj = editingAdjustmentKey ? effectiveAdjustments[editingAdjustmentKey] : undefined;
+    const adjustmentId = Date.now();
+    const newColId = prevAdj?.collectionId || `col-adj-${centerSlug}-${targetMonth}-${adjustmentId}`;
+    const newDepId = prevAdj?.depositId || `dep-adj-${centerSlug}-${targetMonth}-${adjustmentId}`;
+    const adjustmentKey = editingAdjustmentKey || `${adjustmentBaseKey}::${newColId}`;
 
     const resolvedMrNo =
       entryMrNo.trim() ||
@@ -1493,9 +1514,6 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
       const nextAdj = { ...prev };
       delete nextAdj[adjKeyOrMonth];
       if (removedAdj?.adjustmentKey) delete nextAdj[removedAdj.adjustmentKey];
-      if (centerName && monthKey) {
-        delete nextAdj[buildAdjustmentKey(centerName, monthKey)];
-      }
       try {
         localStorage.setItem('polycables_monthly_expense_adjustments', JSON.stringify(nextAdj));
       } catch {}
@@ -1519,14 +1537,7 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
     if (setCollections) {
       setCollections((prev) => {
         const filtered = prev.filter(
-          (c) =>
-            c.id !== targetColId &&
-            !(
-              c.isMonthlyExpenseAdjusted &&
-              c.partyName === removedAdj?.partyName &&
-              cleanBranchName(c.salesCenter || '').toLowerCase() === cleanBranchName(centerName).toLowerCase() &&
-              (c.remarks || '').includes(monthKey)
-            )
+          (c) => c.id !== targetColId
         );
         nextColsList = filtered;
         try {
@@ -1540,15 +1551,7 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
     if (setBankDeposits) {
       setBankDeposits((prev) => {
         const filtered = prev.filter(
-          (d) =>
-            d.id !== targetDepId &&
-            !(
-              d.id.startsWith('dep-adj-') &&
-              d.partyName === removedAdj?.partyName &&
-              cleanBranchName(d.branchName || d.entityName || '').toLowerCase() ===
-                cleanBranchName(centerName).toLowerCase() &&
-              (d.remarks || '').includes(monthKey)
-            )
+          (d) => d.id !== targetDepId
         );
         nextDepsList = filtered;
         try {
@@ -1975,7 +1978,6 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
                   {salesCenterGroups.map((group, gIdx) => {
                     const isExpanded = Boolean(expandedCenters[group.centerKey]);
                     const hasAdj = group.adjustments.length > 0;
-                    const primaryAdj = group.adjustments[0];
                     const dateRangeLabel =
                       group.minDateIso && group.maxDateIso
                         ? group.minDateIso === group.maxDateIso
@@ -2071,56 +2073,55 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
                             className="py-3 px-3 text-center whitespace-nowrap"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {hasAdj && primaryAdj ? (
-                              <div className="inline-flex items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleOpenPartyEntryModal(primaryAdj.monthKey || group.targetMonthKey, group.total, {
-                                      adjustmentKey:
-                                        primaryAdj.adjustmentKey ||
-                                        buildAdjustmentKey(group.centerName, primaryAdj.monthKey || group.targetMonthKey),
-                                      salesCenter: group.centerName,
-                                      partyName: primaryAdj.partyName,
-                                      collectionDate: primaryAdj.collectionDate,
-                                      collectionAmount: primaryAdj.collectionAmount,
-                                      remarks: primaryAdj.remarks,
-                                      mrNo: primaryAdj.mrNo,
-                                      marketingPerson: primaryAdj.marketingPerson
-                                    })
-                                  }
-                                  className="px-2.5 py-1 bg-[#081b28] hover:bg-[#0e2a3d] text-cyan-200 border border-cyan-500/35 rounded-lg font-bold text-[11px] cursor-pointer"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleRemoveAdjustment(
-                                      primaryAdj.adjustmentKey ||
-                                        buildAdjustmentKey(group.centerName, primaryAdj.monthKey || group.targetMonthKey),
-                                      primaryAdj
-                                    )
-                                  }
-                                  className="p-1.5 bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 border border-rose-400/30 rounded-lg cursor-pointer"
-                                  title="Remove adjustment"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ) : (
+                            <div className="flex flex-wrap items-center justify-center gap-1.5">
+                              {group.adjustments.map((adj) => (
+                                <span key={adj.adjustmentKey || adj.collectionId} className="inline-flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleOpenPartyEntryModal(adj.monthKey || group.targetMonthKey, group.total, {
+                                        adjustmentKey: adj.adjustmentKey || buildAdjustmentKey(group.centerName, adj.monthKey || group.targetMonthKey),
+                                        salesCenter: group.centerName,
+                                        partyName: adj.partyName,
+                                        collectionDate: adj.collectionDate,
+                                        collectionAmount: adj.collectionAmount,
+                                        remarks: adj.remarks,
+                                        mrNo: adj.mrNo,
+                                        marketingPerson: adj.marketingPerson
+                                      })
+                                    }
+                                    className="px-2 py-1 bg-[#081b28] hover:bg-[#0e2a3d] text-cyan-200 border border-cyan-500/35 rounded-lg font-bold text-[11px] cursor-pointer"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleRemoveAdjustment(
+                                        adj.adjustmentKey || buildAdjustmentKey(group.centerName, adj.monthKey || group.targetMonthKey),
+                                        adj
+                                      )
+                                    }
+                                    className="p-1.5 bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 border border-rose-400/30 rounded-lg cursor-pointer"
+                                    title={`Remove adjustment for ${adj.partyName}`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </span>
+                              ))}
                               <button
                                 type="button"
                                 onClick={() =>
                                   handleOpenPartyEntryModal(group.targetMonthKey, group.total, {
-                                    salesCenter: group.centerName
+                                    salesCenter: group.centerName,
+                                    addAnother: true
                                   })
                                 }
-                                className="px-3 py-1 bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-200 border border-emerald-400/40 rounded-lg font-black text-[11px] cursor-pointer shadow-2xs"
+                                className="px-2.5 py-1 bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-200 border border-emerald-400/40 rounded-lg font-black text-[11px] cursor-pointer shadow-2xs"
                               >
-                                Adjust Party
+                                + Add Party
                               </button>
-                            )}
+                            </div>
                           </td>
                         </tr>
 
@@ -2377,7 +2378,7 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
             </div>
             <button
               type="button"
-              onClick={() => handleOpenPartyEntryModal()}
+              onClick={() => handleOpenPartyEntryModal(undefined, undefined, { addAnother: true })}
               className="px-4 py-2 bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-200 border border-emerald-400/40 rounded-xl text-xs font-black cursor-pointer shadow-xs"
             >
               + Adjust Party Collection
@@ -2410,9 +2411,9 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
                     </tr>
                   ) : (
                     settlementRows.map((row, idx) => {
-                      const adj = row.adjustment;
-                      const isAdjusted = Boolean(adj && adj.partyName);
-                      const colAmt = adj ? Number(adj.collectionAmount) || 0 : 0;
+                      const rowAdjustments = row.adjustments.filter((adj) => adj.partyName);
+                      const isAdjusted = rowAdjustments.length > 0;
+                      const colAmt = rowAdjustments.reduce((sum, adj) => sum + (Number(adj.collectionAmount) || 0), 0);
                       const netRemaining = colAmt - row.totalExpenses;
 
                       return (
@@ -2427,16 +2428,31 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
                             ৳{row.totalExpenses.toLocaleString('en-IN')}
                           </td>
                           <td className="py-2 px-3 font-bold text-white">
-                            {isAdjusted && adj ? (
-                              <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 rounded font-bold text-xs">
-                                {adj.partyName}
-                              </span>
+                            {isAdjusted ? (
+                              <div className="flex flex-wrap gap-1">
+                                {rowAdjustments.map((adj) => (
+                                  <span
+                                    key={adj.adjustmentKey || adj.collectionId}
+                                    className="px-2 py-0.5 bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 rounded font-bold text-xs"
+                                  >
+                                    {adj.partyName}
+                                  </span>
+                                ))}
+                              </div>
                             ) : (
                               <span className="text-slate-500 font-semibold italic text-xs">Pending</span>
                             )}
                           </td>
                           <td className="py-2 px-3 font-mono font-semibold text-slate-200">
-                            {isAdjusted && adj?.collectionDate ? formatDateDDMMYY(adj.collectionDate) : '-'}
+                            {isAdjusted ? (
+                              <div className="space-y-0.5">
+                                {rowAdjustments.map((adj) => (
+                                  <div key={adj.adjustmentKey || adj.collectionId}>
+                                    {formatDateDDMMYY(adj.collectionDate)}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : '-'}
                           </td>
                           <td className="py-2 px-3 text-right font-mono font-black text-emerald-300">
                             {isAdjusted ? `৳${colAmt.toLocaleString('en-IN')}` : '-'}
@@ -2456,54 +2472,55 @@ export const ExpenseAmountTab: React.FC<ExpenseAmountTabProps> = ({
                             </span>
                           </td>
                           <td className="py-2 px-3 text-center">
-                            {isAdjusted && adj ? (
-                              <div className="flex items-center justify-center space-x-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleOpenPartyEntryModal(row.monthKey, row.totalExpenses, {
-                                      adjustmentKey:
+                            <div className="flex flex-wrap items-center justify-center gap-1">
+                              {rowAdjustments.map((adj) => (
+                                <span key={adj.adjustmentKey || adj.collectionId} className="inline-flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleOpenPartyEntryModal(row.monthKey, row.totalExpenses, {
+                                        adjustmentKey: adj.adjustmentKey || buildAdjustmentKey(row.centerName, row.monthKey),
+                                        salesCenter: row.centerName,
+                                        partyName: adj.partyName,
+                                        collectionDate: adj.collectionDate,
+                                        collectionAmount: adj.collectionAmount,
+                                        remarks: adj.remarks,
+                                        mrNo: adj.mrNo,
+                                        marketingPerson: adj.marketingPerson
+                                      })
+                                    }
+                                    className="px-2 py-1 bg-[#081b28] hover:bg-[#0e2a3d] text-cyan-200 border border-cyan-500/30 rounded font-bold text-xs cursor-pointer"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleRemoveAdjustment(
                                         adj.adjustmentKey || buildAdjustmentKey(row.centerName, row.monthKey),
-                                      salesCenter: row.centerName,
-                                      partyName: adj.partyName,
-                                      collectionDate: adj.collectionDate,
-                                      collectionAmount: adj.collectionAmount,
-                                      remarks: adj.remarks,
-                                      mrNo: adj.mrNo,
-                                      marketingPerson: adj.marketingPerson
-                                    })
-                                  }
-                                  className="px-2 py-1 bg-[#081b28] hover:bg-[#0e2a3d] text-cyan-200 border border-cyan-500/30 rounded font-bold text-xs cursor-pointer"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleRemoveAdjustment(
-                                      adj.adjustmentKey || buildAdjustmentKey(row.centerName, row.monthKey),
-                                      adj
-                                    )
-                                  }
-                                  className="p-1 hover:bg-rose-500/20 text-rose-300 rounded cursor-pointer"
-                                  title="Clear adjustment"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ) : (
+                                        adj
+                                      )
+                                    }
+                                    className="p-1 hover:bg-rose-500/20 text-rose-300 rounded cursor-pointer"
+                                    title={`Remove adjustment for ${adj.partyName}`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </span>
+                              ))}
                               <button
                                 type="button"
                                 onClick={() =>
                                   handleOpenPartyEntryModal(row.monthKey, row.totalExpenses, {
-                                    salesCenter: row.centerName
+                                    salesCenter: row.centerName,
+                                    addAnother: true
                                   })
                                 }
                                 className="px-2.5 py-1 bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-200 border border-emerald-400/40 rounded font-bold text-xs cursor-pointer shadow-2xs"
                               >
-                                Adjust
+                                + Add Party
                               </button>
-                            )}
+                            </div>
                           </td>
                         </tr>
                       );

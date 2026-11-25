@@ -38,7 +38,7 @@ import {
   Save
 } from 'lucide-react';
 import { formatDateDDMMYY } from '../utils/dateUtils';
-import { getBranchAddressDetails } from '../utils/branchAccess';
+import { getBranchAddressDetails, isAdminMarketingLabel } from '../utils/branchAccess';
 import { PolyCablesLogo } from './PolyCablesLogo';
 import { formatChallanLineColors, formatDisplayUnit } from '../utils/stockHelper';
 import { matchesFlexibleSearch } from '../utils/searchHelper';
@@ -113,6 +113,12 @@ export const FactoryPage: React.FC<FactoryPageProps> = ({
     setTimeout(() => setActionSuccessMsg(null), 3500);
   };
 
+  const getMarketingPersonName = (req: Requisition): string => {
+    return [req.marketingPersonName, req.createdByName]
+      .map((name) => (name || '').trim())
+      .find((name) => name && !isAdminMarketingLabel(name, salespersons)) || '';
+  };
+
   const factoryBranchAddress = useMemo(() => {
     const targetBranch = branches.find((b) => b.id === previewingChallan?.branchId) || branches[0];
     return getBranchAddressDetails(targetBranch, company.phone, company.email);
@@ -158,7 +164,7 @@ export const FactoryPage: React.FC<FactoryPageProps> = ({
       phone: company.phone || '01713-434290',
       orderNumber: req.reqNo,
       orderDate: req.date || req.reqDateStr,
-      salespersonName: req.marketingPersonName || req.createdByName || 'Factory Store In-Charge',
+      salespersonName: getMarketingPersonName(req) || 'Factory Store In-Charge',
       branchId: req.branchId || targetBranch?.id,
       branchName: req.branchName || targetBranch?.name || req.toDestination,
       lines: generatedLines,
@@ -212,7 +218,7 @@ export const FactoryPage: React.FC<FactoryPageProps> = ({
       if (selectedBranch !== 'all' && (req.branchName || req.toDestination || '') !== selectedBranch) {
         return false;
       }
-      if (selectedMarketing !== 'all' && (req.marketingPersonName || req.createdByName || '') !== selectedMarketing) {
+      if (selectedMarketing !== 'all' && getMarketingPersonName(req) !== selectedMarketing) {
         return false;
       }
       if (selectedUrgency !== 'all' && req.urgency !== selectedUrgency) {
@@ -224,7 +230,7 @@ export const FactoryPage: React.FC<FactoryPageProps> = ({
       const party = (req.partyName || '').toLowerCase();
       const dest = (req.toDestination || req.branchName || '').toLowerCase();
       const site = (req.deliverySite || '').toLowerCase();
-      const mkt = (req.marketingPersonName || req.createdByName || '').toLowerCase();
+      const mkt = getMarketingPersonName(req).toLowerCase();
       const hasLine = (req.lines || []).some((l) =>
         matchesFlexibleSearch(`${l.itemName || ''} ${l.description || ''}`, searchQuery, `${l.itemCode || ''}`)
       );
@@ -238,7 +244,7 @@ export const FactoryPage: React.FC<FactoryPageProps> = ({
         hasLine
       );
     });
-  }, [activeDataset, searchQuery, selectedBranch, selectedMarketing, selectedUrgency]);
+  }, [activeDataset, searchQuery, selectedBranch, selectedMarketing, selectedUrgency, salespersons]);
 
   // Fast Summary Metrics
   const metrics = useMemo(() => {
@@ -270,11 +276,11 @@ export const FactoryPage: React.FC<FactoryPageProps> = ({
   const uniqueMarketing = useMemo(() => {
     const set = new Set<string>();
     requisitions.forEach((r) => {
-      const m = r.marketingPersonName || r.createdByName;
+      const m = getMarketingPersonName(r);
       if (m) set.add(m);
     });
     return Array.from(set).sort();
-  }, [requisitions]);
+  }, [requisitions, salespersons]);
 
   // Dispatch Action: Mark Order as Dispatched from Factory
   const handleMarkDispatched = (reqId: string) => {
@@ -338,7 +344,7 @@ export const FactoryPage: React.FC<FactoryPageProps> = ({
         'Customer / Destination': r.partyName || r.branchName || 'Sales Center',
         'Sales Center': r.branchName || r.toDestination || 'Madhupur',
         'Delivery Site': r.deliverySite || '-',
-        'Marketing Person': r.marketingPersonName || r.createdByName || '-',
+        'Marketing Person': getMarketingPersonName(r) || '-',
         'Total Coils': r.totalRequestedQty || 0,
         'Amount (৳)': r.totalAmount || 0,
         'Stage': r.stage,
@@ -632,7 +638,7 @@ export const FactoryPage: React.FC<FactoryPageProps> = ({
                       <td className="py-3.5 px-3.5">
                         <div className="text-slate-300 font-semibold flex items-center space-x-1">
                           <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                          <span className="truncate max-w-[130px]">{req.marketingPersonName || req.createdByName || '-'}</span>
+                          <span className="truncate max-w-[130px]">{getMarketingPersonName(req) || '-'}</span>
                         </div>
                       </td>
 
@@ -796,7 +802,7 @@ export const FactoryPage: React.FC<FactoryPageProps> = ({
               </div>
               <div>
                 <span className="text-cyan-300/70 block text-[10px] uppercase font-bold">Marketing Person</span>
-                <span className="text-slate-200 font-medium">{viewingReq.marketingPersonName || viewingReq.createdByName || '-'}</span>
+                <span className="text-slate-200 font-medium">{getMarketingPersonName(viewingReq) || '-'}</span>
               </div>
               <div>
                 <span className="text-cyan-300/70 block text-[10px] uppercase font-bold">Urgency</span>
@@ -970,7 +976,7 @@ export const FactoryPage: React.FC<FactoryPageProps> = ({
 
                       {/* Delivery Challan Badge */}
                       <div className="pt-1.5 pb-0">
-                        <span className="inline-block bg-white text-black border-2 border-black px-4 py-0.5 rounded text-xs font-black tracking-widest uppercase">
+                        <span className="delivery-challan-badge challan-badge inline-block bg-slate-950 text-white border-2 border-slate-950 px-4 py-0.5 rounded text-xs font-black tracking-widest uppercase">
                           DELIVERY CHALLAN
                         </span>
                       </div>

@@ -24,6 +24,9 @@ import {
   isSuperAdminOrAgm,
   isInCharge,
   isAnyAdmin,
+  isAdminSalesperson,
+  isAdminMarketingLabel,
+  isMarketingOfficer,
   getAdminBranches,
   getUserBranch,
   cleanBranchName
@@ -398,6 +401,8 @@ export const ApproveExpenseHub: React.FC<ApproveExpenseHubProps> = ({
         (rawPersonId && (s.id === rawPersonId || (s.code && s.code.toLowerCase() === rawPersonId.toLowerCase()))) ||
         (rawPersonName && s.name.trim().toLowerCase() === rawPersonName.toLowerCase())
     );
+    if (spMatch && isAdminSalesperson(spMatch)) return null;
+    if (isAdminMarketingLabel(rawPersonName, visibleSalespersonCatalog)) return null;
 
     // Fallback: try matching against party's assigned salesperson if no explicit person was set and funding party is tagged
     if (!spMatch && !rawPersonName && exp.fundingPartyName) {
@@ -740,6 +745,7 @@ export const ApproveExpenseHub: React.FC<ApproveExpenseHubProps> = ({
 
     // Seed all Marketing Persons from catalog
     visibleSalespersonCatalog.forEach((sp) => {
+      if (!isMarketingOfficer(sp)) return;
       const spBranch = cleanBranchName(sp.branchName || '');
       const spCore = normalizeSalesCenterCoreKey(spBranch);
       const selCore = normalizeSalesCenterCoreKey(selectedCenter);
