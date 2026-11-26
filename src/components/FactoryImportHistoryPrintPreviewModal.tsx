@@ -92,7 +92,7 @@ export const FactoryImportHistoryPrintPreviewModal: React.FC<FactoryImportHistor
 
   const currentDateFormatted = formatDateDDMMYY(new Date().toISOString().split('T')[0]);
 
-  useAutoPrintOnOpen(isOpen, () => window.print(), onClose);
+  useAutoPrintOnOpen(isOpen, () => window.print());
 
   if (!isOpen) return null;
 

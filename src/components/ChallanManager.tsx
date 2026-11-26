@@ -437,6 +437,8 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
 
   // Challan Print Preview Modal & Mode State (Plain Paper, Pad Hide Logo, Pad Hide All, Slip Pad)
   const [previewingChallan, setPreviewingChallan] = useState<DeliveryChallan | null>(null);
+  const printDialogOpenRef = useRef(false);
+  const ignorePrintEscapeUntilRef = useRef(0);
 
   const challanBranch = useMemo(() => {
     // 1. If currently previewing or selected challan, respect its exact branch (and return null if 'ALL' or unspecified)
@@ -718,13 +720,19 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
 
   useAutoPrintOnOpen(
     Boolean(previewingChallan),
-    () => triggerAutoConfiguredPrint(challanPadHeaderMode === 'slip_pad' ? 'slip_pad' : 'challan'),
-    () => setPreviewingChallan(null)
+    () => triggerAutoConfiguredPrint(challanPadHeaderMode === 'slip_pad' ? 'slip_pad' : 'challan')
   );
 
   // Handle keyboard shortcuts when Print Preview Modal is active (Enter -> Print Now, Alt+A -> Auto-Config, Esc -> Close)
   useEffect(() => {
     if (!previewingChallan) return;
+    const handleBeforePrint = () => {
+      printDialogOpenRef.current = true;
+    };
+    const handleAfterPrint = () => {
+      printDialogOpenRef.current = false;
+      ignorePrintEscapeUntilRef.current = Date.now() + 1000;
+    };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && (e.key === 'a' || e.key === 'A')) {
         e.preventDefault();
@@ -733,12 +741,19 @@ export const ChallanManager: React.FC<ChallanManagerProps> = ({
         e.preventDefault();
         triggerAutoConfiguredPrint(challanPadHeaderMode === 'slip_pad' ? 'slip_pad' : 'challan');
       } else if (e.key === 'Escape') {
+        if (printDialogOpenRef.current || Date.now() < ignorePrintEscapeUntilRef.current) return;
         e.preventDefault();
         setPreviewingChallan(null);
       }
     };
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [previewingChallan, challanPadHeaderMode]);
 
   // Close quick print menu when clicking/touching outside or pressing Escape

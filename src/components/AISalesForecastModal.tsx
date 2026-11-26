@@ -1052,8 +1052,7 @@ export const AISalesForecastModal: React.FC<AISalesForecastModalProps> = ({
   };
   useAutoPrintOnOpen(
     showPrintPreviewModal,
-    () => window.print(),
-    () => setShowPrintPreviewModal(false)
+    () => window.print()
   );
 
   if (!isOpen) return null;

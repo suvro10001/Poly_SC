@@ -204,7 +204,7 @@ export const AdminReportPrintPreviewModal: React.FC<AdminReportPrintPreviewModal
     setCurrentTab(initialTab);
   }, [initialTab]);
 
-  useAutoPrintOnOpen(isOpen, () => window.print(), onClose);
+  useAutoPrintOnOpen(isOpen, () => window.print());
 
   if (!isOpen) return null;
 

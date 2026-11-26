@@ -155,7 +155,7 @@ export const ItemPricePrintPreviewModal: React.FC<ItemPricePrintPreviewModalProp
     window.print();
   };
 
-  useAutoPrintOnOpen(isOpen, handlePrint, onClose);
+  useAutoPrintOnOpen(isOpen, handlePrint);
 
   if (!isOpen) return null;
 

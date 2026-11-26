@@ -2838,8 +2838,7 @@ export const ReportDashboard: React.FC<ReportDashboardProps> = ({
   };
   useAutoPrintOnOpen(
     showPrintPreviewModal,
-    () => window.print(),
-    () => setShowPrintPreviewModal(false)
+    () => window.print()
   );
 
   // Single Selected Party for Year-End Closing

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Printer, Sliders, X } from 'lucide-react';
 import { BillHeader, BillLineItem, BranchLocation, CompanyDetails } from '../types';
 import { formatDateDDMMYY } from '../utils/dateUtils';
@@ -150,6 +150,8 @@ export const BillPrintPreviewModal: React.FC<BillPrintPreviewModalProps> = ({
   const [docType, setDocType] = useState<'bill' | 'challan'>(() => {
     return bill?.documentType || initialDocumentType || 'bill';
   });
+  const printDialogOpenRef = useRef(false);
+  const ignoreEscapeUntilRef = useRef(0);
 
   useEffect(() => {
     if (bill?.documentType) {
@@ -367,13 +369,21 @@ export const BillPrintPreviewModal: React.FC<BillPrintPreviewModalProps> = ({
     }
   };
 
-  useAutoPrintOnOpen(isOpen, handlePrint, onClose, autoPrintOnOpen);
+  useAutoPrintOnOpen(isOpen, handlePrint, autoPrintOnOpen);
 
   // Keyboard shortcut listener
   useEffect(() => {
+    const handleBeforePrint = () => {
+      printDialogOpenRef.current = true;
+    };
+    const handleAfterPrint = () => {
+      printDialogOpenRef.current = false;
+      ignoreEscapeUntilRef.current = Date.now() + 1000;
+    };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
       if (e.key === 'Escape') {
+        if (printDialogOpenRef.current || Date.now() < ignoreEscapeUntilRef.current) return;
         e.preventDefault();
         onClose();
       } else if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
@@ -389,8 +399,14 @@ export const BillPrintPreviewModal: React.FC<BillPrintPreviewModalProps> = ({
         setShowPrinterAutoConfigModal(true);
       }
     };
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isOpen, printPaperFormat, slipPadFontScale, docType]);
 
   return (

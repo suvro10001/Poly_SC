@@ -22,7 +22,7 @@ export const ConveyancePaperModal: React.FC<ConveyancePaperModalProps> = ({
   const [isBlankMode, setIsBlankMode] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
-  useAutoPrintOnOpen(isOpen, () => window.print(), onClose);
+  useAutoPrintOnOpen(isOpen, () => window.print());
 
   if (!isOpen) return null;
 

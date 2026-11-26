@@ -9402,13 +9402,11 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
   };
   useAutoPrintOnOpen(
     showReportPrintPreviewModal,
-    () => triggerAutoConfiguredPrint('report', { paperPreset: 'a4' }),
-    () => setShowReportPrintPreviewModal(false)
+    () => triggerAutoConfiguredPrint('report', { paperPreset: 'a4' })
   );
   useAutoPrintOnOpen(
     showDirectoryPrintPreviewModal,
-    () => triggerAutoConfiguredPrint('report', { paperPreset: 'a4' }),
-    () => setShowDirectoryPrintPreviewModal(false)
+    () => triggerAutoConfiguredPrint('report', { paperPreset: 'a4' })
   );
 
   // Render Party Filter Box with explicit Back / Close system (supports dynamic search, keyboard navigation & dark theme)
@@ -16787,7 +16785,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
           <div
             id="expense-statement-report-content"
             ref={reportPrintRef}
-            className={`expense-statement-sheet bg-white p-3 sm:p-8 rounded-lg shadow-xl border border-slate-300 text-black max-w-[780px] mx-auto space-y-4 font-sans print:p-0 print:border-none print:shadow-none print:m-0 print:max-w-none ${
+            className={`expense-statement-sheet bg-white p-3 sm:p-8 rounded-lg shadow-xl border border-black text-black max-w-[780px] mx-auto space-y-4 font-sans print:shadow-none print:m-0 print:max-w-none ${
               showReportPrintPreviewModal ? 'no-print print:hidden hidden' : ''
             }`}
           >
@@ -16831,7 +16829,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                 padding: 4mm !important;
                 background: #ffffff !important;
                 box-shadow: none !important;
-                border: none !important;
+                border: 1px solid #000000 !important;
                 overflow: visible !important;
                 max-height: none !important;
               }
@@ -16882,7 +16880,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
             <div className="p-2.5 sm:p-6 bg-[#061520]/80 overflow-auto max-h-[85vh] flex justify-start sm:justify-center print:p-0 print:max-h-none print:overflow-visible">
               <div
                 id="expense-statement-report-content-modal"
-                className="expense-statement-sheet bg-white p-3 sm:p-8 rounded-lg shadow-xl border border-slate-300 text-black max-w-[780px] w-full mx-auto font-sans print:p-0 print:border-none print:shadow-none print:m-0 print:max-w-none"
+                className="expense-statement-sheet bg-white p-3 sm:p-8 rounded-lg shadow-xl border border-black text-black max-w-[780px] w-full mx-auto font-sans print:shadow-none print:m-0 print:max-w-none"
               >
                 {renderExpenseReportSheet()}
               </div>

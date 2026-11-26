@@ -438,8 +438,7 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
   const [showPrinterConfigModal, setShowPrinterConfigModal] = useState(false);
   useAutoPrintOnOpen(
     showPrintModal && Boolean(printPreviewReturn),
-    () => triggerAutoConfiguredPrint(printFormat === 'slip_pad' ? 'slip_pad' : 'bill'),
-    () => setShowPrintModal(false)
+    () => triggerAutoConfiguredPrint(printFormat === 'slip_pad' ? 'slip_pad' : 'bill')
   );
 
   const activeReturnBranch = useMemo(() => {

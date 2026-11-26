@@ -652,12 +652,22 @@ input[type="number"] {
     print-color-adjust: exact !important;
   }
 
+  #expense-statement-report-content table th,
+  #expense-statement-report-content table td,
+  #expense-statement-report-content-modal table th,
+  #expense-statement-report-content-modal table td {
+    border: 1px solid #000000 !important;
+  }
+
   .expense-statement-sheet {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 auto !important;
-    padding: 0 !important;
-    border: none !important;
+    padding: 4mm !important;
+    border: 1px solid #000000 !important;
+    box-sizing: border-box !important;
+    box-decoration-break: clone !important;
+    -webkit-box-decoration-break: clone !important;
     box-shadow: none !important;
   }
 

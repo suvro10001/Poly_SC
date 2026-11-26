@@ -542,11 +542,10 @@ export const YearlyClosingModal: React.FC<YearlyClosingModalProps> = ({
   const [editingClosing, setEditingClosing] = useState<FinancialYearClosing | null>(null);
   const [viewingClosingStatement, setViewingClosingStatement] = useState<FinancialYearClosing | null>(null);
   const [showHistoryPrintPreview, setShowHistoryPrintPreview] = useState<boolean>(false);
-  useAutoPrintOnOpen(showPrintPreview, () => window.print(), () => setShowPrintPreview(false));
+  useAutoPrintOnOpen(showPrintPreview, () => window.print());
   useAutoPrintOnOpen(
     showHistoryPrintPreview && Boolean(viewingClosingStatement),
-    () => window.print(),
-    () => setShowHistoryPrintPreview(false)
+    () => window.print()
   );
 
   // History Statement Reconstructed Items

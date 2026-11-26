@@ -418,8 +418,7 @@ export const SalesReportView: React.FC<SalesReportViewProps> = ({
   const [previewZoom, setPreviewZoom] = useState<'80%' | '100%' | '115%'>('100%');
   useAutoPrintOnOpen(
     showPrintPreviewModal,
-    () => window.print(),
-    () => setShowPrintPreviewModal(false)
+    () => window.print()
   );
 
 
